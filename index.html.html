@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SGEO - Sistema de Gestão de Exames Ocupacionais</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--p:#1a237e;--pl:#3949ab;--pd:#0d1642;--ac:#00bfa5;--dg:#e53935;--dgl:#ffebee;--wr:#f57f17;--wrl:#fff8e1;--sc:#2e7d32;--scl:#e8f5e9;--in:#1565c0;--inl:#e3f2fd;--bg:#f4f6fb;--cd:#fff;--tx:#212121;--ts:#616161;--bd:#e0e0e0;--sh:0 2px 12px rgba(0,0,0,.08);--r:10px}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:var(--bg);color:var(--tx);min-height:100vh}
+.hd{background:linear-gradient(135deg,var(--pd),var(--p));color:#fff;position:sticky;top:0;z-index:1000;box-shadow:0 4px 20px rgba(0,0,0,.15)}
+.hd-top{display:flex;align-items:center;justify-content:space-between;padding:14px 24px}
+.hd-t{display:flex;align-items:center;gap:12px}
+.logo{width:38px;height:38px;background:var(--ac);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px}
+.hd-t h1{font-size:19px;letter-spacing:1px}
+.hd-t small{font-size:10px;opacity:.7;display:block}
+.hd-r{display:flex;align-items:center;gap:16px;position:relative}
+.notif-btn{position:relative;cursor:pointer;background:rgba(255,255,255,.1);border:none;color:#fff;padding:7px 13px;border-radius:6px;font-size:13px}
+.notif-btn:hover{background:rgba(255,255,255,.2)}
+.nb{background:var(--dg);color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:50px;position:absolute;top:-5px;right:-5px}
+.np{display:none;position:absolute;top:110%;right:0;background:#fff;border-radius:var(--r);box-shadow:0 8px 32px rgba(0,0,0,.15);width:400px;max-height:450px;overflow-y:auto;z-index:3000;color:var(--tx)}
+.np.show{display:block}
+.np-h{padding:12px 16px;font-weight:700;font-size:13px;border-bottom:1px solid var(--bd);color:var(--p)}
+.np-i{padding:10px 16px;border-bottom:1px solid #f5f5f5;font-size:12px;line-height:1.5}
+.np-i:hover{background:#f8f9ff}
+.tabs{display:flex;background:rgba(0,0,0,.15);padding:0 16px;overflow-x:auto}
+.tab{padding:11px 20px;color:rgba(255,255,255,.6);cursor:pointer;font-size:12px;font-weight:600;border-bottom:3px solid transparent;white-space:nowrap;transition:.2s}
+.tab:hover{color:rgba(255,255,255,.9)}
+.tab.on{color:#fff;border-bottom-color:var(--ac);background:rgba(255,255,255,.08)}
+.mn{padding:20px 24px;max-width:1440px;margin:0 auto}
+.cd{background:var(--cd);border-radius:var(--r);box-shadow:var(--sh);padding:22px;margin-bottom:18px}
+.cd-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px}
+.cd-t{font-size:15px;font-weight:700;color:var(--p);display:flex;align-items:center;gap:8px}
+.sr{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:20px}
+.sc{background:var(--cd);border-radius:var(--r);padding:18px;box-shadow:var(--sh);border-left:4px solid var(--p);transition:.2s}
+.sc:hover{transform:translateY(-2px)}
+.sc.dg{border-left-color:var(--dg)}.sc.wr{border-left-color:var(--wr)}.sc.sc2{border-left-color:var(--sc)}.sc.in{border-left-color:var(--in)}.sc.pn{border-left-color:#9c27b0}
+.sn{font-size:30px;font-weight:800;color:var(--p)}
+.sc.dg .sn{color:var(--dg)}.sc.wr .sn{color:var(--wr)}.sc.sc2 .sn{color:var(--sc)}.sc.in .sn{color:var(--in)}.sc.pn .sn{color:#9c27b0}
+.sl{font-size:11px;color:var(--ts);margin-top:3px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:var(--p);color:#fff;padding:10px 12px;text-align:left;font-weight:600;font-size:11px;text-transform:uppercase;white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid var(--bd)}
+tr:hover td{background:#f8f9ff}
+.bg{display:inline-block;padding:3px 10px;border-radius:50px;font-size:10px;font-weight:700;text-transform:uppercase}
+.bg-s{background:var(--scl);color:var(--sc)}.bg-d{background:var(--dgl);color:var(--dg)}.bg-w{background:var(--wrl);color:var(--wr)}.bg-i{background:var(--inl);color:var(--in)}.bg-n{background:#f5f5f5;color:#757575}.bg-pn{background:#f3e5f5;color:#9c27b0}
+.bt{padding:8px 18px;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;transition:.2s;display:inline-flex;align-items:center;gap:5px}
+.bt-p{background:var(--p);color:#fff}.bt-p:hover{background:var(--pl)}
+.bt-a{background:var(--ac);color:#fff}.bt-a:hover{background:#00897b}
+.bt-d{background:var(--dg);color:#fff}.bt-d:hover{background:#c62828}
+.bt-o{background:transparent;border:2px solid var(--p);color:var(--p)}.bt-o:hover{background:var(--p);color:#fff}
+.bt-g{background:var(--sc);color:#fff}.bt-g:hover{background:#1b5e20}
+.bt-s{padding:5px 12px;font-size:11px}
+.bt-l{padding:12px 28px;font-size:14px}
+.fg{margin-bottom:14px}
+.fg label{display:block;font-size:11px;font-weight:600;color:var(--ts);margin-bottom:5px;text-transform:uppercase;letter-spacing:.3px}
+.fc{width:100%;padding:9px 12px;border:2px solid var(--bd);border-radius:6px;font-size:13px;transition:.2s;font-family:inherit}
+.fc:focus{outline:none;border-color:var(--p)}
+.fr{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.mo{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:2000;align-items:center;justify-content:center}
+.mo.show{display:flex}
+.ml{background:#fff;border-radius:var(--r);padding:24px;max-width:720px;width:95%;max-height:92vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.15)}
+.ml-t{font-size:17px;font-weight:700;color:var(--p);margin-bottom:18px;display:flex;align-items:center;gap:8px}
+.ml-a{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
+.fb{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:18px;padding:16px;background:var(--cd);border-radius:var(--r);box-shadow:var(--sh)}
+.fb .fg{margin-bottom:0;flex:1;min-width:170px}
+.iz{border:3px dashed var(--bd);border-radius:var(--r);padding:44px 30px;text-align:center;cursor:pointer;transition:.3s}
+.iz:hover{border-color:var(--p);background:#f8f9ff}
+.tg{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;background:#e8eaf6;color:var(--p);margin:1px}
+.hr{background:#fff3e0!important}.cr{background:#ffebee!important}.pr{background:#f3e5f5!important}
+.es{text-align:center;padding:40px 20px;color:var(--ts)}
+.pv{background:#f8f9ff;border:1px solid var(--bd);border-radius:6px;padding:14px;margin-bottom:10px}
+.pv h4{color:var(--p);font-size:13px;margin-bottom:6px}
+.lg{background:#1a1a2e;color:#0f0;border-radius:6px;padding:14px;font-family:'Courier New',monospace;font-size:11px;max-height:280px;overflow-y:auto;line-height:1.8}
+.exrow{display:flex;gap:8px;align-items:end;padding:8px;background:#f8f9ff;border-radius:6px;margin-bottom:6px;flex-wrap:wrap}
+.exrow .fg{margin-bottom:0;flex:1;min-width:140px}
+.sep{border:none;border-top:2px dashed var(--bd);margin:18px 0}
+.sync-status{display:flex;align-items:center;gap:6px;font-size:11px;padding:4px 10px;border-radius:50px}
+.sync-ok{background:var(--scl);color:var(--sc)}.sync-err{background:var(--dgl);color:var(--dg)}.sync-pend{background:var(--wrl);color:var(--wr)}
+.backup-card{border:2px solid var(--bd);border-radius:var(--r);padding:24px;text-align:center;transition:.2s;cursor:pointer}
+.backup-card:hover{border-color:var(--p);background:#f8f9ff;transform:translateY(-2px)}
+.backup-card .icon{font-size:42px;margin-bottom:10px}
+.backup-card h3{color:var(--p);font-size:15px;margin-bottom:6px}
+.backup-card p{color:var(--ts);font-size:12px;line-height:1.5}
+.timeline{position:relative;padding-left:24px}
+.timeline::before{content:'';position:absolute;left:8px;top:0;bottom:0;width:2px;background:var(--bd)}
+.timeline-item{position:relative;padding:10px 0 10px 20px;font-size:13px}
+.timeline-item::before{content:'';position:absolute;left:-20px;top:14px;width:12px;height:12px;border-radius:50%;background:var(--p);border:2px solid #fff;box-shadow:0 0 0 2px var(--p)}
+.timeline-item.ok::before{background:var(--sc)}.timeline-item.err::before{background:var(--dg)}
+.progress-bar{width:100%;height:6px;background:var(--bd);border-radius:3px;overflow:hidden;margin:8px 0}
+.progress-bar .fill{height:100%;background:var(--ac);border-radius:3px;transition:width .5s}
+.loading-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center;flex-direction:column;color:#fff}
+.loading-overlay.show{display:flex}
+.loading-overlay .spinner{width:50px;height:50px;border:4px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:768px){.mn{padding:14px}.sr{grid-template-columns:repeat(2,1fr)}.fb{flex-direction:column}.fb .fg{min-width:100%}.exrow{flex-direction:column}}
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadOv">
+  <div class="spinner"></div>
+  <p style="margin-top:16px;font-size:14px" id="loadTxt">Carregando dados...</p>
+</div>
+
+<div class="hd">
+  <div class="hd-top">
+    <div class="hd-t"><div class="logo">SO</div><div><h1>SGEO</h1><small>Sistema de Gestão de Exames Ocupacionais • ☁️ Cloud</small></div></div>
+    <div class="hd-r">
+      <div class="sync-status sync-ok" id="syncSt"><span>●</span> <span id="syncTxt">Nuvem ✓</span></div>
+      <button class="notif-btn" onclick="toggleNP()" id="btnN">🔔 <span class="nb" id="nC">0</span></button>
+      <div class="np" id="nP"><div class="np-h">🔔 Alertas</div><div id="nL"></div></div>
+      <span style="font-size:12px;opacity:.8">📅 <span id="dH"></span></span>
+    </div>
+  </div>
+  <div class="tabs" id="tabBar"></div>
+</div>
+<div class="mn" id="MC"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+// ============================================================
+// SGEO 4.0 CLOUD — Supabase Direct
+// ============================================================
+
+const SUPABASE_URL = 'https://rpnlbzqrvbarkbiosclv.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJwbmxienFydmJhcmtiaW9zY2x2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4OTIyNzYsImV4cCI6MjA5MjQ2ODI3Nn0.t5SnP9ThwzM2zIkdvi_tfrnNBzrxKhFomobJo1D-Sgs';
+const HEADERS = {
+  'apikey': SUPABASE_KEY,
+  'Authorization': `Bearer ${SUPABASE_KEY}`,
+  'Content-Type': 'application/json',
+  'Prefer': 'return=representation'
+};
+
+// ===== CACHE LOCAL (para performance) =====
+let CACHE = { escritorios:[], empresas:[], funcionarios:[], exames:[] };
+
+function showLoad(msg){document.getElementById('loadTxt').textContent=msg||'Carregando...';document.getElementById('loadOv').classList.add('show')}
+function hideLoad(){document.getElementById('loadOv').classList.remove('show')}
+function setSyncStatus(st,txt){const el=document.getElementById('syncSt');const tx=document.getElementById('syncTxt');el.className='sync-status sync-'+st;tx.textContent=txt}
+
+// ===== SUPABASE API =====
+async function sbGet(table){
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=*&order=criado_em.desc`, {headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`}});
+  if(!res.ok) throw new Error(`Erro GET ${table}: ${res.status}`);
+  return res.json();
+}
+
+async function sbInsert(table, data){
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {method:'POST', headers:HEADERS, body:JSON.stringify(data)});
+  if(!res.ok){const t=await res.text();throw new Error(`Erro INSERT ${table}: ${res.status} ${t}`)}
+  return res.json();
+}
+
+async function sbUpdate(table, id, data){
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {method:'PATCH', headers:HEADERS, body:JSON.stringify(data)});
+  if(!res.ok){const t=await res.text();throw new Error(`Erro UPDATE ${table}: ${res.status} ${t}`)}
+  return res.json();
+}
+
+async function sbDelete(table, id){
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {method:'DELETE', headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`}});
+  if(!res.ok) throw new Error(`Erro DELETE ${table}: ${res.status}`);
+}
+
+async function sbUpsert(table, data){
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+    method:'POST', 
+    headers:{...HEADERS, 'Prefer':'resolution=merge-duplicates,return=representation'},
+    body:JSON.stringify(data)
+  });
+  if(!res.ok){const t=await res.text();throw new Error(`Erro UPSERT ${table}: ${res.status} ${t}`)}
+  return res.json();
+}
+
+// ===== CARREGAR TUDO DO SUPABASE =====
+async function loadAll(){
+  try{
+    setSyncStatus('pend','Carregando...');
+    const [e,f,x,s] = await Promise.all([sbGet('empresas'),sbGet('funcionarios'),sbGet('exames'),sbGet('escritorios')]);
+    CACHE.empresas = e.map(r=>({id:r.id, razao:r.razao, cnpj:r.cnpj, escId:r.esc_id||''}));
+    CACHE.funcionarios = f.map(r=>({id:r.id, nm:r.nm, cpf:r.cpf, eId:r.e_id||'', fn:r.fn, adm:r.adm, sit:r.sit}));
+    CACHE.exames = x.map(r=>({id:r.id, fId:r.f_id||'', tp:r.tp, dt:r.dt, vc:r.vc}));
+    CACHE.escritorios = s.map(r=>({id:r.id, nome:r.nome, contato:r.contato, email:r.email, resp:r.resp}));
+    setSyncStatus('ok','Nuvem ✓');
+    return true;
+  }catch(err){
+    console.error('loadAll error:',err);
+    setSyncStatus('err','Erro conexão');
+    return false;
+  }
+}
+
+// ===== HELPERS =====
+function gid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function pd(s){if(!s)return null;s=s.trim();if(s.includes('/')){const p=s.split('/');if(p.length===3){const d=new Date(+p[2],+p[1]-1,+p[0]);return isNaN(d)?null:d}}const d=new Date(s);return isNaN(d)?null:d}
+function fd(d){if(!d)return'-';const t=new Date(d);return isNaN(t)?'-':t.toLocaleDateString('pt-BR')}
+function fi(d){if(!d)return'';const t=new Date(d);if(isNaN(t))return'';return`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`}
+function ddf(v){const d=new Date(v),n=new Date();n.setHours(0,0,0,0);d.setHours(0,0,0,0);return Math.round((d-n)/864e5)}
+function gs(v){if(!v)return'pendente';const d=ddf(v);return d<0?'vencido':d<=15?'vencendo':'ok'}
+const TIPOS=['Clínico (ASO)','Audiometria','Hemograma (Sangue)','EEG','ECG','Acuidade Visual','Espirometria','Raio-X','Glicemia','Outro'];
+
+// ===== GETTERS (do cache) =====
+function ld(type){
+  const map = {escritorios:'escritorios',empresas:'empresas',funcionarios:'funcionarios',exames:'exames'};
+  return CACHE[map[type]] || CACHE[type] || [];
+}
+
+// ===== NAV =====
+const PGS=['dashboard','empresas','funcionarios','exames','escritorios','relatorios','importar','backup'];
+const LBS=['📊 Dashboard','🏢 Empresas','👥 Funcionários','🩺 Exames','📋 Escritórios','📈 Relatórios','📥 Importar','💾 Backup'];
+let CP='dashboard',FV={};
+
+function sF(){document.querySelectorAll('.mn input.fc,.mn select.fc').forEach(el=>{if(el.id)FV[el.id]=el.value})}
+function rF(){Object.keys(FV).forEach(id=>{const el=document.getElementById(id);if(el)el.value=FV[id]||''})}
+function initT(){document.getElementById('tabBar').innerHTML=PGS.map((p,i)=>`<div class="tab${p===CP?' on':''}" onclick="gP('${p}')">${LBS[i]}</div>`).join('')}
+function gP(p){CP=p;FV={};initT();R()}
+function toggleNP(){document.getElementById('nP').classList.toggle('show')}
+document.addEventListener('click',e=>{if(!e.target.closest('#btnN')&&!e.target.closest('#nP'))document.getElementById('nP').classList.remove('show')});
+
+function getAl(){
+  const fs=ld('funcionarios'),xs=ld('exames'),es=ld('empresas');
+  return xs.map(x=>{const f=fs.find(ff=>ff.id===x.fId);if(!f||f.sit!=='Ativo')return null;const st=gs(x.vc);if(st==='ok')return null;return{x,f,emp:es.find(e=>e.id===f.eId),st,dy:x.vc?ddf(x.vc):null}}).filter(Boolean).sort((a,b)=>(a.dy===null?-9999:a.dy)-(b.dy===null?-9999:b.dy));
+}
+function rN(){
+  const al=getAl();document.getElementById('nC').textContent=al.length;
+  const nl=document.getElementById('nL');
+  if(!al.length){nl.innerHTML='<div class="np-i" style="text-align:center;color:var(--ts)">✅ Tudo em dia!</div>';return}
+  nl.innerHTML=al.slice(0,30).map(a=>{const ic=a.st==='pendente'?'🟣':a.st==='vencido'?'🔴':'🟡';const lb=a.st==='pendente'?'PENDENTE':a.st==='vencido'?'VENCIDO':'VENCENDO';const inf=a.st==='pendente'?'Sem data':a.st==='vencido'?Math.abs(a.dy)+'d atrás':a.dy+'d';return`<div class="np-i"><div style="font-weight:600;color:${a.st==='vencido'?'var(--dg)':a.st==='pendente'?'#9c27b0':'var(--wr)'}">${ic} ${lb} — ${a.x.tp}</div><strong>${a.f.nm}</strong><div style="color:var(--ts);font-size:11px">${inf}</div></div>`}).join('');
+}
+
+function escO(){return'<option value="">-- Nenhum --</option>'+ld('escritorios').map(s=>`<option value="${s.id}">${s.nome}</option>`).join('')}
+function empO(s){return(s?'<option value="">'+s+'</option>':'')+ld('empresas').map(e=>`<option value="${e.id}">${e.razao}</option>`).join('')}
+function fncO(){const es=ld('empresas');return ld('funcionarios').filter(f=>f.sit==='Ativo').map(f=>{const e=es.find(ee=>ee.id===f.eId);return`<option value="${f.id}">${f.nm}${e?' ('+e.razao+')':''}</option>`}).join('')}
+function tpO(){return TIPOS.map(t=>`<option value="${t}">${t}</option>`).join('')}
+
+function R(){
+  const mc=document.getElementById('MC'),ae=document.activeElement,ai=ae?ae.id:'',cp=ae&&ae.selectionStart!==undefined?ae.selectionStart:null;
+  sF();rN();
+  const pg={dashboard:pgD,empresas:pgE,funcionarios:pgF,exames:pgX,escritorios:pgS,relatorios:pgR,importar:pgI,backup:pgB};
+  mc.innerHTML=(pg[CP]||pgD)();rF();
+  if(ai){const el=document.getElementById(ai);if(el){el.focus();if(cp!==null&&el.setSelectionRange)try{el.setSelectionRange(cp,cp)}catch(e){}}}
+}
+
+// ===== DASHBOARD =====
+function pgD(){
+  const es=ld('empresas'),fs=ld('funcionarios'),xs=ld('exames');const atv=fs.filter(f=>f.sit==='Ativo');
+  const cnt=st=>xs.filter(x=>{const f=fs.find(ff=>ff.id===x.fId);return f&&f.sit==='Ativo'&&gs(x.vc)===st}).length;
+  const al=getAl();
+  let h=`<h2 style="font-size:20px;margin-bottom:18px;color:var(--p)">📊 Painel de Controle</h2>
+  <div class="sr"><div class="sc in"><div class="sn">${es.length}</div><div class="sl">Empresas</div></div><div class="sc"><div class="sn">${atv.length}</div><div class="sl">Func. Ativos</div></div><div class="sc dg"><div class="sn">${cnt('vencido')}</div><div class="sl">Vencidos</div></div><div class="sc wr"><div class="sn">${cnt('vencendo')}</div><div class="sl">Vencendo 15d</div></div><div class="sc pn"><div class="sn">${cnt('pendente')}</div><div class="sl">Pendentes</div></div><div class="sc sc2"><div class="sn">${cnt('ok')}</div><div class="sl">Em Dia</div></div></div>
+  <div class="cd"><div class="cd-h"><div class="cd-t">⚠️ Alertas</div></div><div class="tw"><table><thead><tr><th>Empresa</th><th>Funcionário</th><th>Função</th><th>Tipo</th><th>Vencimento</th><th>Status</th><th>Dias</th></tr></thead><tbody>`;
+  if(!al.length)h+='<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--sc)">✅ Tudo em dia!</td></tr>';
+  else al.forEach(a=>{const cls=a.st==='vencido'?'cr':a.st==='pendente'?'pr':'hr';const bgc=a.st==='vencido'?'bg-d':a.st==='pendente'?'bg-pn':'bg-w';const lbl=a.st==='vencido'?'Vencido':a.st==='pendente'?'Pendente':'Vencendo';const dtx=a.st==='pendente'?'<strong style="color:#9c27b0">Sem data</strong>':a.st==='vencido'?`<strong style="color:var(--dg)">${Math.abs(a.dy)}d atrás</strong>`:`<strong style="color:var(--wr)">${a.dy}d</strong>`;h+=`<tr class="${cls}"><td>${a.emp?a.emp.razao:'-'}</td><td><strong>${a.f.nm}</strong></td><td>${a.f.fn}</td><td><span class="tg">${a.x.tp}</span></td><td>${fd(a.x.vc)}</td><td><span class="bg ${bgc}">${lbl}</span></td><td>${dtx}</td></tr>`});
+  return h+'</tbody></table></div></div>';
+}
+
+// ===== EMPRESAS =====
+function pgE(){
+  const es=ld('empresas'),fs=ld('funcionarios'),xs=ld('exames'),ss=ld('escritorios');const ft=(FV['fE']||'').toLowerCase(),fe=FV['fEE']||'';
+  const fil=es.filter(e=>(e.razao.toLowerCase().includes(ft)||e.cnpj.includes(ft))&&(!fe||e.escId===fe));
+  let h=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px"><h2 style="font-size:20px;color:var(--p)">🏢 Empresas</h2><button class="bt bt-p" onclick="mEmp()">+ Nova Empresa</button></div>
+  <div class="fb"><div class="fg"><label>Buscar</label><input class="fc" placeholder="Razão social ou CNPJ..." id="fE" oninput="R()"></div><div class="fg"><label>Escritório</label><select class="fc" id="fEE" onchange="R()"><option value="">Todos</option>${ss.map(s=>`<option value="${s.id}">${s.nome}</option>`).join('')}</select></div></div>
+  <div class="cd"><div class="tw"><table><thead><tr><th>Razão Social</th><th>CNPJ</th><th>Escritório</th><th>Funcs</th><th>Alertas</th><th>Ações</th></tr></thead><tbody>`;
+  if(!fil.length)h+='<tr><td colspan="6" class="es">Nenhuma</td></tr>';
+  else fil.forEach(e=>{const esc=ss.find(s=>s.id===e.escId);const fc=fs.filter(f=>f.eId===e.id&&f.sit==='Ativo');const nv=fc.reduce((c,f)=>c+xs.filter(x=>x.fId===f.id&&gs(x.vc)!=='ok').length,0);h+=`<tr><td><strong>${e.razao}</strong></td><td>${e.cnpj}</td><td>${esc?esc.nome:'-'}</td><td>${fc.length}</td><td>${nv>0?'<span class="bg bg-d">'+nv+'</span>':'<span class="bg bg-s">OK</span>'}</td><td><button class="bt bt-o bt-s" onclick="mEmp('${e.id}')">✏️</button> <button class="bt bt-d bt-s" onclick="dEmp('${e.id}')">🗑️</button></td></tr>`});
+  return h+'</tbody></table></div></div>';
+}
+function mEmp(id){const e=id?ld('empresas').find(x=>x.id===id):null;document.body.insertAdjacentHTML('beforeend',`<div class="mo show" id="M1"><div class="ml"><div class="ml-t">🏢 ${e?'Editar':'Nova'} Empresa</div><div class="fr"><div class="fg"><label>Razão Social *</label><input class="fc" id="eR" value="${e?e.razao:''}"></div><div class="fg"><label>CNPJ *</label><input class="fc" id="eC" value="${e?e.cnpj:''}"></div></div><div class="fg"><label>Escritório</label><select class="fc" id="eS">${escO()}</select></div><div class="ml-a"><button class="bt bt-o" onclick="document.getElementById('M1').remove()">Cancelar</button><button class="bt bt-p" onclick="sEmp('${id||''}')">💾 Salvar</button></div></div></div>`);if(e)document.getElementById('eS').value=e.escId||''}
+async function sEmp(id){
+  const r=document.getElementById('eR').value.trim(),c=document.getElementById('eC').value.trim(),s=document.getElementById('eS').value;
+  if(!r||!c){alert('Obrigatório');return}
+  try{
+    if(id){
+      await sbUpdate('empresas',id,{razao:r,cnpj:c,esc_id:s});
+      const i=CACHE.empresas.findIndex(e=>e.id===id);if(i>=0)Object.assign(CACHE.empresas[i],{razao:r,cnpj:c,escId:s});
+    }else{
+      const nid=gid();
+      await sbInsert('empresas',{id:nid,razao:r,cnpj:c,esc_id:s});
+      CACHE.empresas.push({id:nid,razao:r,cnpj:c,escId:s});
+    }
+    document.getElementById('M1').remove();R();
+  }catch(err){alert('Erro: '+err.message)}
+}
+async function dEmp(id){
+  if(!confirm('Remover empresa e dados vinculados?'))return;
+  try{
+    const fIds=CACHE.funcionarios.filter(f=>f.eId===id).map(f=>f.id);
+    for(const fid of fIds){
+      const exs=CACHE.exames.filter(x=>x.fId===fid);
+      for(const x of exs) await sbDelete('exames',x.id);
+      await sbDelete('funcionarios',fid);
+    }
+    await sbDelete('empresas',id);
+    CACHE.exames=CACHE.exames.filter(x=>!fIds.includes(x.fId));
+    CACHE.funcionarios=CACHE.funcionarios.filter(f=>f.eId!==id);
+    CACHE.empresas=CACHE.empresas.filter(e=>e.id!==id);
+    R();
+  }catch(err){alert('Erro: '+err.message)}
+}
+
+// ===== FUNCIONÁRIOS =====
+function pgF(){
+  const fs=ld('funcionarios'),es=ld('empresas'),xs=ld('exames');const ft=(FV['fF']||'').toLowerCase(),fe=FV['fFE']||'',fst=FV['fFS']||'';
+  const fil=fs.filter(f=>(f.nm.toLowerCase().includes(ft)||(f.cpf||'').includes(ft))&&(!fe||f.eId===fe)&&(!fst||f.sit===fst));
+  let h=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px"><h2 style="font-size:20px;color:var(--p)">👥 Funcionários</h2><button class="bt bt-p" onclick="mFunc()">+ Novo Funcionário</button></div>
+  <div class="fb"><div class="fg"><label>Buscar</label><input class="fc" placeholder="Nome ou CPF..." id="fF" oninput="R()"></div><div class="fg"><label>Empresa</label><select class="fc" id="fFE" onchange="R()"><option value="">Todas</option>${es.map(e=>`<option value="${e.id}">${e.razao}</option>`).join('')}</select></div><div class="fg"><label>Situação</label><select class="fc" id="fFS" onchange="R()"><option value="">Todas</option><option value="Ativo">Ativo</option><option value="Demitido">Demitido</option></select></div></div>
+  <div class="cd"><div class="tw"><table><thead><tr><th>Nome</th><th>CPF</th><th>Empresa</th><th>Função</th><th>Admissão</th><th>Exames</th><th>Situação</th><th>Ações</th></tr></thead><tbody>`;
+  if(!fil.length)h+='<tr><td colspan="8" class="es">Nenhum</td></tr>';
+  else fil.forEach(f=>{const emp=es.find(e=>e.id===f.eId);const exs=xs.filter(x=>x.fId===f.id);const exB=exs.length?exs.map(x=>{const s=gs(x.vc);const c=s==='ok'?'bg-s':s==='vencido'?'bg-d':s==='pendente'?'bg-pn':'bg-w';return`<span class="bg ${c}" style="font-size:8px;margin:1px">${x.tp.replace(/\(.*/,'').trim()}</span>`}).join(' '):'<span class="bg bg-n">Sem</span>';h+=`<tr><td><strong>${f.nm}</strong></td><td>${f.cpf||'-'}</td><td>${emp?emp.razao:'-'}</td><td>${f.fn}</td><td>${fd(f.adm)}</td><td>${exB}</td><td><span class="bg ${f.sit==='Ativo'?'bg-s':'bg-n'}">${f.sit}</span></td><td><button class="bt bt-o bt-s" onclick="mFunc('${f.id}')">✏️</button> <button class="bt bt-d bt-s" onclick="dFunc('${f.id}')">🗑️</button></td></tr>`});
+  return h+'</tbody></table></div></div>';
+}
+let ER=[];
+function mFunc(id){const f=id?ld('funcionarios').find(x=>x.id===id):null;ER=id?ld('exames').filter(x=>x.fId===id).map(x=>({tp:x.tp,dt:x.dt,vc:x.vc})):[];if(!ER.length&&!id)ER=[{tp:'Clínico (ASO)',dt:'',vc:''}];
+document.body.insertAdjacentHTML('beforeend',`<div class="mo show" id="M2"><div class="ml"><div class="ml-t">👤 ${f?'Editar':'Novo'} Funcionário</div><div class="fr"><div class="fg"><label>Nome *</label><input class="fc" id="fN" value="${f?f.nm:''}"></div><div class="fg"><label>CPF</label><input class="fc" id="fC" value="${f?f.cpf:''}"></div></div><div class="fr"><div class="fg"><label>Empresa *</label><select class="fc" id="fE2">${empO('-- Selecione --')}</select></div><div class="fg"><label>Função *</label><input class="fc" id="fFn" value="${f?f.fn:''}"></div></div><div class="fr"><div class="fg"><label>Admissão</label><input type="date" class="fc" id="fA" value="${f?f.adm:''}"></div><div class="fg"><label>Situação</label><select class="fc" id="fSt"><option value="Ativo">Ativo</option><option value="Demitido">Demitido</option></select></div></div><hr class="sep"><div class="cd-t" style="margin-bottom:12px">🩺 Exames</div><div id="ERC"></div><button class="bt bt-a bt-s" onclick="aER()" style="margin-top:8px">+ Exame</button><div class="ml-a"><button class="bt bt-o" onclick="document.getElementById('M2').remove()">Cancelar</button><button class="bt bt-p" onclick="sFunc('${id||''}')">💾 Salvar</button></div></div></div>`);
+if(f){document.getElementById('fE2').value=f.eId;document.getElementById('fSt').value=f.sit}rER()}
+function rER(){const c=document.getElementById('ERC');if(!c)return;c.innerHTML=ER.map((r,i)=>`<div class="exrow"><div class="fg" style="min-width:150px"><label>Tipo</label><select class="fc" id="xT${i}" onchange="ER[${i}].tp=this.value">${TIPOS.map(t=>`<option${r.tp===t?' selected':''}>${t}</option>`).join('')}</select></div><div class="fg" style="min-width:130px"><label>Realização</label><input type="date" class="fc" id="xD${i}" value="${r.dt||''}" onchange="ER[${i}].dt=this.value;aV(${i})"></div><div class="fg" style="min-width:130px"><label>Vencimento</label><input type="date" class="fc" id="xV${i}" value="${r.vc||''}" onchange="ER[${i}].vc=this.value"></div><button class="bt bt-d bt-s" onclick="ER.splice(${i},1);rER()">✕</button></div>`).join('')}
+function aER(){ER.push({tp:'Clínico (ASO)',dt:'',vc:''});rER()}
+function aV(i){const d=document.getElementById('xD'+i).value;if(d){const dt=new Date(d);dt.setFullYear(dt.getFullYear()+1);const v=fi(dt);document.getElementById('xV'+i).value=v;ER[i].vc=v}}
+async function sFunc(id){
+  const nm=document.getElementById('fN').value.trim(),cpf=document.getElementById('fC').value.trim(),eId=document.getElementById('fE2').value,fn=document.getElementById('fFn').value.trim(),adm=document.getElementById('fA').value,sit=document.getElementById('fSt').value;
+  if(!nm||!eId||!fn){alert('Obrigatório');return}
+  try{
+    let fId;
+    if(id){
+      await sbUpdate('funcionarios',id,{nm,cpf,e_id:eId,fn,adm,sit});
+      const i=CACHE.funcionarios.findIndex(f=>f.id===id);if(i>=0)Object.assign(CACHE.funcionarios[i],{nm,cpf,eId,fn,adm,sit});
+      fId=id;
+      // remover exames antigos
+      const oldEx=CACHE.exames.filter(x=>x.fId===id);
+      for(const ox of oldEx) await sbDelete('exames',ox.id);
+      CACHE.exames=CACHE.exames.filter(x=>x.fId!==id);
+    }else{
+      fId=gid();
+      await sbInsert('funcionarios',{id:fId,nm,cpf,e_id:eId,fn,adm,sit});
+      CACHE.funcionarios.push({id:fId,nm,cpf,eId,fn,adm,sit});
+    }
+    // inserir exames
+    for(const r of ER){
+      if(r.tp){
+        const xid=gid();
+        await sbInsert('exames',{id:xid,f_id:fId,tp:r.tp,dt:r.dt||'',vc:r.vc||''});
+        CACHE.exames.push({id:xid,fId,tp:r.tp,dt:r.dt||'',vc:r.vc||''});
+      }
+    }
+    document.getElementById('M2').remove();R();
+  }catch(err){alert('Erro: '+err.message)}
+}
+async function dFunc(id){
+  if(!confirm('Remover funcionário e exames?'))return;
+  try{
+    const exs=CACHE.exames.filter(x=>x.fId===id);
+    for(const x of exs) await sbDelete('exames',x.id);
+    await sbDelete('funcionarios',id);
+    CACHE.exames=CACHE.exames.filter(x=>x.fId!==id);
+    CACHE.funcionarios=CACHE.funcionarios.filter(f=>f.id!==id);
+    R();
+  }catch(err){alert('Erro: '+err.message)}
+}
+
+// ===== EXAMES =====
+function pgX(){const xs=ld('exames'),fs=ld('funcionarios'),es=ld('empresas');const fxe=FV['fXE']||'',fxt=FV['fXT']||'',fxs=FV['fXS']||'',fxf=(FV['fXF']||'').toLowerCase();
+const rows=xs.map(x=>{const f=fs.find(ff=>ff.id===x.fId);if(!f)return null;return{x,f,e:es.find(ee=>ee.id===f.eId),st:gs(x.vc),dy:x.vc?ddf(x.vc):null}}).filter(Boolean).filter(r=>(!fxe||r.f.eId===fxe)&&(!fxt||r.x.tp===fxt)&&(!fxs||r.st===fxs)&&(!fxf||r.f.nm.toLowerCase().includes(fxf))).sort((a,b)=>(a.dy===null?-9999:a.dy)-(b.dy===null?-9999:b.dy));
+let h=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px"><h2 style="font-size:20px;color:var(--p)">🩺 Exames</h2><button class="bt bt-p" onclick="mEx()">+ Registrar</button></div>
+<div class="fb"><div class="fg"><label>Empresa</label><select class="fc" id="fXE" onchange="R()"><option value="">Todas</option>${es.map(e=>`<option value="${e.id}">${e.razao}</option>`).join('')}</select></div><div class="fg"><label>Tipo</label><select class="fc" id="fXT" onchange="R()"><option value="">Todos</option>${tpO()}</select></div><div class="fg"><label>Status</label><select class="fc" id="fXS" onchange="R()"><option value="">Todos</option><option value="vencido">Vencido</option><option value="vencendo">Vencendo</option><option value="pendente">Pendente</option><option value="ok">Em dia</option></select></div><div class="fg"><label>Funcionário</label><input class="fc" placeholder="Nome..." id="fXF" oninput="R()"></div></div>
+<div class="cd"><div class="tw"><table><thead><tr><th>Funcionário</th><th>Empresa</th><th>Tipo</th><th>Realização</th><th>Vencimento</th><th>Status</th><th>Dias</th><th>Ações</th></tr></thead><tbody>`;
+if(!rows.length)h+='<tr><td colspan="8" class="es">Nenhum</td></tr>';
+else rows.forEach(r=>{const bgc=r.st==='vencido'?'bg-d':r.st==='vencendo'?'bg-w':r.st==='pendente'?'bg-pn':'bg-s';const lbl=r.st==='vencido'?'Vencido':r.st==='vencendo'?'Vencendo':r.st==='pendente'?'Pendente':'Em dia';const cls=r.st==='vencido'?'cr':r.st==='vencendo'?'hr':r.st==='pendente'?'pr':'';const dtx=r.st==='pendente'?'<strong style="color:#9c27b0">—</strong>':r.st==='vencido'?`<strong style="color:var(--dg)">${Math.abs(r.dy)}d</strong>`:r.st==='vencendo'?`<strong style="color:var(--wr)">${r.dy}d</strong>`:`${r.dy}d`;h+=`<tr class="${cls}"><td><strong>${r.f.nm}</strong></td><td>${r.e?r.e.razao:'-'}</td><td><span class="tg">${r.x.tp}</span></td><td>${fd(r.x.dt)}</td><td>${fd(r.x.vc)}</td><td><span class="bg ${bgc}">${lbl}</span></td><td>${dtx}</td><td><button class="bt bt-o bt-s" onclick="mEx('${r.x.id}')">✏️</button> <button class="bt bt-d bt-s" onclick="dEx('${r.x.id}')">🗑️</button></td></tr>`});
+return h+'</tbody></table></div></div>'}
+function mEx(id){const x=id?ld('exames').find(xx=>xx.id===id):null;document.body.insertAdjacentHTML('beforeend',`<div class="mo show" id="M3"><div class="ml"><div class="ml-t">🩺 ${x?'Editar':'Registrar'} Exame</div><div class="fr"><div class="fg"><label>Funcionário *</label><select class="fc" id="xF">${fncO()}</select></div><div class="fg"><label>Tipo *</label><select class="fc" id="xT">${tpO()}</select></div></div><div class="fr"><div class="fg"><label>Realização</label><input type="date" class="fc" id="xD" value="${x?x.dt:''}" onchange="aVM()"></div><div class="fg"><label>Vencimento</label><input type="date" class="fc" id="xV" value="${x?x.vc:''}"></div></div><div class="ml-a"><button class="bt bt-o" onclick="document.getElementById('M3').remove()">Cancelar</button><button class="bt bt-p" onclick="sEx('${id||''}')">💾 Salvar</button></div></div></div>`);if(x){document.getElementById('xF').value=x.fId;document.getElementById('xT').value=x.tp}}
+function aVM(){const d=document.getElementById('xD').value;if(d){const dt=new Date(d);dt.setFullYear(dt.getFullYear()+1);document.getElementById('xV').value=fi(dt)}}
+async function sEx(id){
+  const fId=document.getElementById('xF').value,tp=document.getElementById('xT').value,dt=document.getElementById('xD').value,vc=document.getElementById('xV').value;
+  if(!fId||!tp){alert('Obrigatório');return}
+  try{
+    if(id){
+      await sbUpdate('exames',id,{f_id:fId,tp,dt:dt||'',vc:vc||''});
+      const i=CACHE.exames.findIndex(x=>x.id===id);if(i>=0)Object.assign(CACHE.exames[i],{fId,tp,dt:dt||'',vc:vc||''});
+    }else{
+      const nid=gid();
+      await sbInsert('exames',{id:nid,f_id:fId,tp,dt:dt||'',vc:vc||''});
+      CACHE.exames.push({id:nid,fId,tp,dt:dt||'',vc:vc||''});
+    }
+    document.getElementById('M3').remove();R();
+  }catch(err){alert('Erro: '+err.message)}
+}
+async function dEx(id){
+  if(!confirm('Remover exame?'))return;
+  try{await sbDelete('exames',id);CACHE.exames=CACHE.exames.filter(x=>x.id!==id);R()}catch(err){alert('Erro: '+err.message)}
+}
+
+// ===== ESCRITÓRIOS =====
+function pgS(){const ss=ld('escritorios'),es=ld('empresas');let h=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px"><h2 style="font-size:20px;color:var(--p)">📋 Escritórios</h2><button class="bt bt-p" onclick="mEsc()">+ Novo</button></div>`;if(!ss.length)return h+'<div class="cd es">Nenhum</div>';ss.forEach(s=>{const ee=es.filter(e=>e.escId===s.id);h+=`<div class="cd"><div class="cd-h"><div class="cd-t">📋 ${s.nome}${s.contato?' <span style="font-weight:400;font-size:11px;color:var(--ts)">📞 '+s.contato+'</span>':''}${s.email?' <span style="font-weight:400;font-size:11px;color:var(--ts)">✉️ '+s.email+'</span>':''}</div><div><button class="bt bt-o bt-s" onclick="mEsc('${s.id}')">✏️</button> <button class="bt bt-d bt-s" onclick="dEsc('${s.id}')">🗑️</button></div></div>${s.resp?'<p style="font-size:12px;color:var(--ts);margin-bottom:6px">👤 '+s.resp+'</p>':''}<p style="font-size:12px;color:var(--ts);margin-bottom:10px">Empresas: <strong>${ee.length}</strong></p>`;if(ee.length){h+='<table><thead><tr><th>Razão Social</th><th>CNPJ</th></tr></thead><tbody>';ee.forEach(e=>h+=`<tr><td>${e.razao}</td><td>${e.cnpj}</td></tr>`);h+='</tbody></table>'}h+='</div>'});return h}
+function mEsc(id){const s=id?ld('escritorios').find(x=>x.id===id):null;document.body.insertAdjacentHTML('beforeend',`<div class="mo show" id="M4"><div class="ml"><div class="ml-t">📋 ${s?'Editar':'Novo'} Escritório</div><div class="fg"><label>Nome *</label><input class="fc" id="sN" value="${s?s.nome:''}"></div><div class="fr"><div class="fg"><label>Contato</label><input class="fc" id="sC" value="${s?s.contato||'':''}"></div><div class="fg"><label>E-mail</label><input class="fc" id="sE" value="${s?s.email||'':''}"></div></div><div class="fg"><label>Responsável</label><input class="fc" id="sR" value="${s?s.resp||'':''}"></div><div class="ml-a"><button class="bt bt-o" onclick="document.getElementById('M4').remove()">Cancelar</button><button class="bt bt-p" onclick="sEs('${id||''}')">💾 Salvar</button></div></div></div>`)}
+async function sEs(id){
+  const nm=document.getElementById('sN').value.trim();if(!nm){alert('Obrigatório');return}
+  const ct=document.getElementById('sC').value.trim(),em=document.getElementById('sE').value.trim(),rs=document.getElementById('sR').value.trim();
+  try{
+    if(id){
+      await sbUpdate('escritorios',id,{nome:nm,contato:ct,email:em,resp:rs});
+      const i=CACHE.escritorios.findIndex(s=>s.id===id);if(i>=0)Object.assign(CACHE.escritorios[i],{nome:nm,contato:ct,email:em,resp:rs});
+    }else{
+      const nid=gid();
+      await sbInsert('escritorios',{id:nid,nome:nm,contato:ct,email:em,resp:rs});
+      CACHE.escritorios.push({id:nid,nome:nm,contato:ct,email:em,resp:rs});
+    }
+    document.getElementById('M4').remove();R();
+  }catch(err){alert('Erro: '+err.message)}
+}
+async function dEsc(id){if(!confirm('Remover escritório?'))return;try{await sbDelete('escritorios',id);CACHE.escritorios=CACHE.escritorios.filter(s=>s.id!==id);R()}catch(err){alert('Erro: '+err.message)}}
+
+// ===== RELATÓRIOS =====
+function pgR(){const es=ld('empresas');const ma=`${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;const tc=TIPOS.map(t=>`<label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="${t}" class="rtc"> ${t}</label>`).join('');
+return`<h2 style="font-size:20px;color:var(--p);margin-bottom:18px">📈 Relatórios</h2><div class="cd"><div class="cd-h"><div class="cd-t">🔴 Vencidos/Pendentes por Empresa</div></div><div class="fg"><label>Empresa</label><select class="fc" id="rE" onchange="rVE()"><option value="">-- Selecione --</option>${es.map(e=>`<option value="${e.id}">${e.razao}</option>`).join('')}</select></div><div class="tw"><table><thead><tr><th>Funcionário</th><th>Função</th><th>Tipo</th><th>Vencimento</th><th>Status</th></tr></thead><tbody id="rVE"></tbody></table></div></div><div class="cd"><div class="cd-h"><div class="cd-t">📅 Vencendo no Mês</div></div><div class="fg"><label>Mês</label><input type="month" class="fc" id="rM" value="${ma}" onchange="rME()"></div><div class="tw"><table><thead><tr><th>Empresa</th><th>Funcionário</th><th>Tipo</th><th>Vencimento</th></tr></thead><tbody id="rME"></tbody></table></div></div><div class="cd"><div class="cd-h"><div class="cd-t">🩺 Por Tipo</div></div><div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px">${tc}</div><div class="fg" style="max-width:300px"><label>Status</label><select class="fc" id="rTS"><option value="vencido">Vencidos</option><option value="pendente">Pendentes</option><option value="todos">Todos com alerta</option></select></div><button class="bt bt-p" onclick="rTE()" style="margin-bottom:14px">🔍 Filtrar</button><div class="tw"><table><thead><tr><th>Empresa</th><th>Funcionário</th><th>Tipo</th><th>Vencimento</th><th>Status</th></tr></thead><tbody id="rTE"></tbody></table></div></div>`}
+function rVE(){const eId=document.getElementById('rE').value;const tb=document.getElementById('rVE');if(!eId){tb.innerHTML='';return}const fs=ld('funcionarios'),xs=ld('exames');const rows=[];fs.filter(f=>f.eId===eId&&f.sit==='Ativo').forEach(f=>{xs.filter(x=>x.fId===f.id&&gs(x.vc)!=='ok').forEach(x=>{rows.push({f,x,st:gs(x.vc)})})});if(!rows.length){tb.innerHTML='<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--sc)">✅ OK</td></tr>';return}tb.innerHTML=rows.map(r=>`<tr class="${r.st==='vencido'?'cr':'pr'}"><td><strong>${r.f.nm}</strong></td><td>${r.f.fn}</td><td><span class="tg">${r.x.tp}</span></td><td>${fd(r.x.vc)}</td><td><span class="bg ${r.st==='vencido'?'bg-d':'bg-pn'}">${r.st==='vencido'?'Vencido':'Pendente'}</span></td></tr>`).join('')}
+function rME(){const m=document.getElementById('rM').value;if(!m)return;const[a,mm]=m.split('-').map(Number);const fs=ld('funcionarios'),es=ld('empresas'),xs=ld('exames');const tb=document.getElementById('rME');const rows=[];xs.forEach(x=>{if(!x.vc)return;const v=new Date(x.vc);if(v.getFullYear()===a&&v.getMonth()+1===mm){const f=fs.find(ff=>ff.id===x.fId);if(f&&f.sit==='Ativo')rows.push({f,e:es.find(ee=>ee.id===f.eId),x})}});tb.innerHTML=!rows.length?'<tr><td colspan="4" class="es">Nenhum</td></tr>':rows.map(r=>`<tr><td>${r.e?r.e.razao:'-'}</td><td><strong>${r.f.nm}</strong></td><td><span class="tg">${r.x.tp}</span></td><td>${fd(r.x.vc)}</td></tr>`).join('')}
+function rTE(){const tipos=Array.from(document.querySelectorAll('.rtc:checked')).map(c=>c.value);const stf=document.getElementById('rTS').value;const tb=document.getElementById('rTE');if(!tipos.length){tb.innerHTML='<tr><td colspan="5" class="es">Selecione tipo(s)</td></tr>';return}const fs=ld('funcionarios'),es=ld('empresas'),xs=ld('exames');const rows=[];xs.forEach(x=>{if(!tipos.includes(x.tp))return;const f=fs.find(ff=>ff.id===x.fId);if(!f||f.sit!=='Ativo')return;const st=gs(x.vc);const inc=stf==='vencido'?st==='vencido':stf==='pendente'?st==='pendente':st!=='ok';if(inc)rows.push({f,e:es.find(ee=>ee.id===f.eId),x,st})});tb.innerHTML=!rows.length?'<tr><td colspan="5" class="es">Nenhum</td></tr>':rows.map(r=>`<tr><td>${r.e?r.e.razao:'-'}</td><td><strong>${r.f.nm}</strong></td><td><span class="tg">${r.x.tp}</span></td><td>${fd(r.x.vc)}</td><td><span class="bg ${r.st==='vencido'?'bg-d':'bg-pn'}">${r.st==='vencido'?'Vencido':'Pendente'}</span></td></tr>`).join('')}
+
+// ===== IMPORTAR WORD =====
+let ID=null;
+function pgI(){return`<h2 style="font-size:20px;color:var(--p);margin-bottom:18px">📥 Importar Word (.docx)</h2><div class="cd"><div class="cd-t" style="margin-bottom:16px">📄 Envie o arquivo</div><div class="iz" onclick="document.getElementById('impF').click()"><div style="font-size:52px;margin-bottom:10px">📂</div><p><strong>Clique para selecionar</strong></p></div><input type="file" id="impF" accept=".docx" style="display:none" onchange="hDoc(event)"><div id="impR"></div></div>`}
+function normT(t){const tipos=[];const s=(t||'').toLowerCase();if(s.includes('clin')||s.match(/\baso\b/))tipos.push('Clínico (ASO)');if(s.includes('audio'))tipos.push('Audiometria');if(s.includes('sangue')||s.includes('hemo'))tipos.push('Hemograma (Sangue)');if(s.includes('eletroencef')||s.match(/\beeg\b/))tipos.push('EEG');if(s.includes('eletrocardio')||s.match(/\becg\b/))tipos.push('ECG');if(s.includes('acuidade')||s.includes('visual'))tipos.push('Acuidade Visual');if(s.includes('espiro'))tipos.push('Espirometria');if(s.includes('raio'))tipos.push('Raio-X');if(s.includes('glicemia')||s.includes('glicem'))tipos.push('Glicemia');if(!tipos.length&&s.length>2)tipos.push('Outro');return tipos}
+async function hDoc(ev){const file=ev.target.files[0];if(!file)return;const res=document.getElementById('impR');res.innerHTML='<div class="cd" style="border-left:4px solid var(--in);margin-top:16px"><p style="color:var(--in);font-weight:600">⏳ Lendo...</p></div>';
+try{const buf=await file.arrayBuffer();const zip=await JSZip.loadAsync(buf);const dx=await zip.file('word/document.xml').async('string');const pr=new DOMParser();const xml=pr.parseFromString(dx,'application/xml');const ns='http://schemas.openxmlformats.org/wordprocessingml/2006/main';const allP=xml.getElementsByTagNameNS(ns,'p');const allText=[];for(let i=0;i<allP.length;i++){const rs=allP[i].getElementsByTagNameNS(ns,'t');let l='';for(let j=0;j<rs.length;j++)l+=rs[j].textContent;if(l.trim())allText.push(l.trim())}
+const tbls=xml.getElementsByTagNameNS(ns,'tbl');const tR=[];for(let t=0;t<tbls.length;t++){const trs=tbls[t].getElementsByTagNameNS(ns,'tr');for(let i=0;i<trs.length;i++){const tcs=trs[i].getElementsByTagNameNS(ns,'tc');const cells=[];for(let j=0;j<tcs.length;j++){const ps=tcs[j].getElementsByTagNameNS(ns,'p');let ct='';for(let k=0;k<ps.length;k++){const ts=ps[k].getElementsByTagNameNS(ns,'t');let pt='';for(let l=0;l<ts.length;l++)pt+=ts[l].textContent;if(pt.trim()){if(ct)ct+='\n';ct+=pt.trim()}}cells.push(ct)}tR.push(cells)}}
+let razao='',cnpj='',escNm='';const full=allText.join(' ');const cm=full.match(/(\d{2}[.\s]?\d{3}[.\s]?\d{3}[\/\s]?\d{4}[-\s]?\d{2})/);if(cm)cnpj=cm[1].trim();
+for(const l of allText){if(l.match(/\d{2}[.\s]?\d{3}[.\s]?\d{3}/)){const pp=l.split(/[-–—]/);razao=pp[0].replace(/CNPJ\s*/i,'').replace(cnpj,'').trim();if(pp.length>1){const lp=pp[pp.length-1].trim();if(lp.length>1&&lp.length<40&&!lp.match(/^\d/))escNm=lp}break}}
+razao=razao.replace(/\s{2,}/g,' ').replace(/CNPJ/i,'').replace(cnpj,'').trim().replace(/[-–—\s]+$/,'').trim();
+if(!escNm)for(const l of allText){const m=l.match(/(BENICONT|[A-Z]+CONT\b|Alpha|ALPHA)/i);if(m){escNm=m[0];break}}
+const emps=[];let hdr=-1;for(let i=0;i<tR.length;i++)if(tR[i].some(c=>c.match(/NOME|Nome/i))){hdr=i;break}
+for(let i=(hdr>=0?hdr+1:1);i<tR.length;i++){const row=tR[i];if(!row.length)continue;const c0=(row[0]||'').trim();if(!c0||c0.match(/^Conferido|^Contato/i))continue;const lines=c0.split('\n').map(l=>l.trim()).filter(Boolean);let nm='',cpf2='',adm2='';for(const ln of lines){const cpfM=ln.match(/CPF[:\s]*([\d.\-]+)/i);const admM=ln.match(/(?:ADM|Admiss)[:\s]*([\d\/]+)/i);if(cpfM)cpf2=cpfM[1];else if(admM)adm2=admM[1];else if(ln.length>3&&!ln.match(/^CPF|^Data|^ADM/i))nm=ln.replace(/CPF[:\s]*[\d.\-]*/i,'').trim()}
+if(!nm||nm.length<3)continue;const fn2=(row[1]||'').replace(/\n/g,' ').trim();const sit2=(row[2]||'').trim();const stEx=(row[3]||'').trim();const dtA=(row[4]||'').trim();const tpEx=(row[5]||'').replace(/\n/g,' ').trim();const dtP=(row[6]||'').trim();const tipos=normT(tpEx);const temD=dtA&&dtA.match(/\d{2}\/\d{2}\/\d{4}/);const temV=dtP&&dtP.match(/\d{2}\/\d{2}\/\d{4}/);const isPend=stEx.match(/n[ãa]o\s*tem/i)||(!temD&&tipos.length>0);
+emps.push({nome:nm,cpf:cpf2,adm:adm2,funcao:fn2,sit:sit2.match(/ativo/i)?'Ativo':'Ativo',dtAso:temD?dtA:'',tipos,dtProx:temV?dtP:'',isPend})}
+ID={razao,cnpj,escNm,employees:emps};
+let ph=`<div class="cd" style="border-left:4px solid var(--sc);margin-top:16px"><div class="cd-t" style="margin-bottom:14px">✅ Dados extraídos!</div><div class="pv"><h4>🏢 ${razao||'?'} — ${cnpj||'?'}</h4></div><div class="pv"><h4>📋 ${escNm||'Não identificado'}</h4></div><div class="pv"><h4>👥 ${emps.length} Funcionário(s)</h4>`;
+if(emps.length){ph+='<table style="margin-top:8px"><thead><tr><th>Nome</th><th>CPF</th><th>Função</th><th>Tipos</th><th>Obs</th></tr></thead><tbody>';emps.forEach(e=>{ph+=`<tr><td><strong>${e.nome}</strong></td><td>${e.cpf||'-'}</td><td>${e.funcao||'-'}</td><td>${e.tipos.map(t=>'<span class="tg">'+t+'</span>').join(' ')}</td><td>${e.isPend?'<span class="bg bg-pn">Pendente</span>':fd(e.dtAso)}</td></tr>`});ph+='</tbody></table>'}
+ph+=`</div><div class="fr" style="margin-top:16px"><div class="fg"><label>Escritório</label><select class="fc" id="impE">${escO()}</select></div><div class="fg"><label>Ou crie</label><div style="display:flex;gap:6px"><input class="fc" id="impNE" placeholder="Nome"><button class="bt bt-a bt-s" onclick="cEI()">+</button></div></div></div><div class="ml-a" style="margin-top:16px"><button class="bt bt-o" onclick="ID=null;R()">Cancelar</button><button class="bt bt-g bt-l" onclick="cImp()">✅ Importar</button></div></div>`;res.innerHTML=ph;
+if(escNm){const ss=ld('escritorios');const m=ss.find(s=>s.nome.toLowerCase()===escNm.toLowerCase());if(m)setTimeout(()=>{const s=document.getElementById('impE');if(s)s.value=m.id},50)}}catch(err){res.innerHTML=`<div class="cd" style="border-left:4px solid var(--dg);margin-top:16px"><p style="color:var(--dg)">❌ ${err.message}</p></div>`}ev.target.value=''}
+async function cEI(){
+  const nm=document.getElementById('impNE').value.trim();if(!nm)return;
+  try{
+    const nid=gid();
+    await sbInsert('escritorios',{id:nid,nome:nm,contato:'',email:'',resp:''});
+    CACHE.escritorios.push({id:nid,nome:nm,contato:'',email:'',resp:''});
+    document.getElementById('impE').innerHTML=escO();document.getElementById('impE').value=nid;document.getElementById('impNE').value='';
+  }catch(err){alert('Erro: '+err.message)}
+}
+async function cImp(){
+  if(!ID)return;const{razao,cnpj,escNm,employees}=ID;let escId=(document.getElementById('impE')||{}).value||'';
+  showLoad('Importando dados para a nuvem...');
+  try{
+    if(!escId&&escNm){const m=CACHE.escritorios.find(s=>s.nome.toLowerCase()===escNm.toLowerCase());if(m)escId=m.id;else{escId=gid();await sbInsert('escritorios',{id:escId,nome:escNm,contato:'',email:'',resp:''});CACHE.escritorios.push({id:escId,nome:escNm,contato:'',email:'',resp:''})}}
+    let emp=cnpj?CACHE.empresas.find(e=>e.cnpj.replace(/\D/g,'')===cnpj.replace(/\D/g,'')):null;
+    if(!emp){const eid=gid();emp={id:eid,razao:razao||'Importada',cnpj:cnpj||'',escId};await sbInsert('empresas',{id:eid,razao:emp.razao,cnpj:emp.cnpj,esc_id:escId});CACHE.empresas.push(emp)}else{if(escId){emp.escId=escId;await sbUpdate('empresas',emp.id,{esc_id:escId})}}
+    let log='',cF=0,cX=0;
+    for(const e of employees){
+      let ex=e.cpf?CACHE.funcionarios.find(f=>f.cpf&&f.cpf.replace(/\D/g,'')===e.cpf.replace(/\D/g,'')&&f.eId===emp.id):null;
+      let fId;
+      if(ex){fId=ex.id;Object.assign(ex,{nm:e.nome,fn:e.funcao||ex.fn,sit:e.sit});if(e.adm){const dt=pd(e.adm);if(dt)ex.adm=fi(dt)}await sbUpdate('funcionarios',fId,{nm:ex.nm,cpf:ex.cpf,e_id:ex.eId,fn:ex.fn,adm:ex.adm,sit:ex.sit});log+=`<div style="color:#ff0">⚠️ ${e.nome} — atualizado</div>`}
+      else{fId=gid();const admDt=pd(e.adm);const nf={id:fId,nm:e.nome,cpf:e.cpf||'',eId:emp.id,fn:e.funcao||'?',adm:admDt?fi(admDt):'',sit:e.sit||'Ativo'};await sbInsert('funcionarios',{id:fId,nm:nf.nm,cpf:nf.cpf,e_id:nf.eId,fn:nf.fn,adm:nf.adm,sit:nf.sit});CACHE.funcionarios.push(nf);cF++;log+=`<div style="color:#0f0">✅ ${e.nome}</div>`}
+      const dtAso=pd(e.dtAso);const dtProx=e.dtProx?pd(e.dtProx):null;
+      for(const tp of e.tipos){
+        const xid=gid();
+        if(e.isPend||!dtAso){await sbInsert('exames',{id:xid,f_id:fId,tp,dt:'',vc:''});CACHE.exames.push({id:xid,fId,tp,dt:'',vc:''});cX++;log+=`<div style="color:#c0f">  🟣 ${tp} — PENDENTE</div>`}
+        else{let vc=dtProx?new Date(dtProx):new Date(dtAso);if(!dtProx)vc.setFullYear(vc.getFullYear()+1);const vcStr=fi(vc);const dtStr=fi(dtAso);await sbInsert('exames',{id:xid,f_id:fId,tp,dt:dtStr,vc:vcStr});CACHE.exames.push({id:xid,fId,tp,dt:dtStr,vc:vcStr});cX++;log+=`<div style="color:#0af">  🩺 ${tp} (${fd(vcStr)})</div>`}
+      }
+    }
+    hideLoad();
+    document.getElementById('impR').innerHTML=`<div class="cd" style="border-left:4px solid var(--sc);margin-top:16px"><div class="cd-t" style="margin-bottom:14px">✅ Importação Concluída!</div><div class="sr"><div class="sc sc2"><div class="sn">1</div><div class="sl">Empresa</div></div><div class="sc in"><div class="sn">${cF}</div><div class="sl">Funcionários</div></div><div class="sc"><div class="sn">${cX}</div><div class="sl">Exames</div></div></div><div class="lg">${log}</div><div class="ml-a" style="margin-top:16px"><button class="bt bt-p" onclick="gP('dashboard')">📊 Dashboard</button><button class="bt bt-a" onclick="ID=null;R()">📥 Nova</button></div></div>`;ID=null;rN();
+  }catch(err){hideLoad();alert('Erro na importação: '+err.message)}
+}
+
+// ===== BACKUP PAGE =====
+function pgB(){
+  const es=ld('empresas'),fs=ld('funcionarios'),xs=ld('exames'),ss=ld('escritorios');
+  let h=`<h2 style="font-size:20px;color:var(--p);margin-bottom:18px">💾 Backup & Dados</h2>
+  <div class="cd" style="border-left:4px solid var(--sc)">
+    <div class="cd-t" style="margin-bottom:12px">☁️ Seus dados estão na nuvem!</div>
+    <p style="font-size:13px;line-height:1.8;color:var(--ts)">Todos os dados são salvos automaticamente no <strong>Supabase</strong>. Você pode acessar de qualquer computador ou celular. O backup local é uma camada extra de segurança.</p>
+  </div>
+  <div class="sr" style="margin-bottom:20px">
+    <div class="sc in"><div class="sn">${es.length}</div><div class="sl">Empresas</div></div>
+    <div class="sc"><div class="sn">${fs.length}</div><div class="sl">Funcionários</div></div>
+    <div class="sc"><div class="sn">${xs.length}</div><div class="sl">Exames</div></div>
+    <div class="sc"><div class="sn">${ss.length}</div><div class="sl">Escritórios</div></div>
+  </div>
+  <div class="sr">
+    <div class="backup-card" onclick="exportBackup()"><div class="icon">📤</div><h3>Exportar JSON</h3><p>Baixa um arquivo .json com todos os dados da nuvem como backup extra.</p></div>
+    <div class="backup-card" onclick="importBackup()"><div class="icon">📥</div><h3>Importar JSON</h3><p>Carrega um backup .json e envia todos os dados para a nuvem.</p></div>
+    <div class="backup-card" onclick="reloadCloud()"><div class="icon">🔄</div><h3>Recarregar Nuvem</h3><p>Recarrega todos os dados do Supabase (útil se editou em outro PC).</p></div>
+  </div>
+  <div class="cd" style="margin-top:10px"><div class="cd-t" style="margin-bottom:12px">🗑️ Zona de Perigo</div>
+    <button class="bt bt-d" onclick="resetAll()">🗑️ Limpar TUDO da Nuvem</button>
+    <p style="font-size:11px;color:var(--ts);margin-top:8px">Remove permanentemente todos os dados do Supabase. Faça backup antes!</p>
+  </div>`;
+  return h;
+}
+
+function exportBackup(){
+  const data={sgeo_version:'4.0',exported:new Date().toISOString(),empresas:ld('empresas'),funcionarios:ld('funcionarios'),exames:ld('exames'),escritorios:ld('escritorios')};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');
+  a.href=url;a.download=`SGEO_Backup_${new Date().toISOString().slice(0,10)}.json`;a.click();
+  URL.revokeObjectURL(url);alert('✅ Backup exportado!');
+}
+
+function importBackup(){
+  const input=document.createElement('input');input.type='file';input.accept='.json';
+  input.onchange=e=>{
+    const file=e.target.files[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=async ev=>{
+      try{
+        const data=JSON.parse(ev.target.result);
+        if(!data.empresas&&!data.funcionarios){alert('❌ Arquivo inválido');return}
+        if(!confirm(`⚠️ Enviar dados do backup para a NUVEM?\n\nBackup: ${data.exported||'?'}\nEscritórios: ${(data.escritorios||[]).length}\nEmpresas: ${(data.empresas||[]).length}\nFuncionários: ${(data.funcionarios||[]).length}\nExames: ${(data.exames||[]).length}\n\nDados existentes serão mesclados (upsert).`))return;
+        showLoad('Enviando backup para a nuvem...');
+        // Upsert escritorios
+        if(data.escritorios&&data.escritorios.length){
+          const batch=data.escritorios.map(s=>({id:s.id,nome:s.nome||'',contato:s.contato||'',email:s.email||'',resp:s.resp||''}));
+          await sbUpsert('escritorios',batch);
+        }
+        // Upsert empresas
+        if(data.empresas&&data.empresas.length){
+          const batch=data.empresas.map(e=>({id:e.id,razao:e.razao||'',cnpj:e.cnpj||'',esc_id:e.escId||''}));
+          await sbUpsert('empresas',batch);
+        }
+        // Upsert funcionarios
+        if(data.funcionarios&&data.funcionarios.length){
+          const batch=data.funcionarios.map(f=>({id:f.id,nm:f.nm||'',cpf:f.cpf||'',e_id:f.eId||'',fn:f.fn||'',adm:f.adm||'',sit:f.sit||'Ativo'}));
+          // Supabase tem limite de payload, enviar em lotes de 500
+          for(let i=0;i<batch.length;i+=500){
+            await sbUpsert('funcionarios',batch.slice(i,i+500));
+          }
+        }
+        // Upsert exames
+        if(data.exames&&data.exames.length){
+          const batch=data.exames.map(x=>({id:x.id,f_id:x.fId||'',tp:x.tp||'',dt:x.dt||'',vc:x.vc||''}));
+          for(let i=0;i<batch.length;i+=500){
+            await sbUpsert('exames',batch.slice(i,i+500));
+          }
+        }
+        await loadAll();
+        hideLoad();
+        alert('✅ Dados restaurados na nuvem!');
+        R();
+      }catch(er){hideLoad();alert('❌ Erro: '+er.message)}
+    };reader.readAsText(file);
+  };input.click();
+}
+
+async function reloadCloud(){
+  showLoad('Recarregando da nuvem...');
+  await loadAll();
+  hideLoad();
+  R();
+  alert('✅ Dados recarregados!');
+}
+
+async function resetAll(){
+  if(!confirm('⚠️ APAGAR TUDO da nuvem?\n\nEsta ação é IRREVERSÍVEL!\nFaça backup antes.'))return;
+  if(!confirm('TEM CERTEZA ABSOLUTA?'))return;
+  showLoad('Removendo dados...');
+  try{
+    // Deletar tudo via API (truncate via delete sem filtro)
+    await fetch(`${SUPABASE_URL}/rest/v1/exames?id=neq.IMPOSSIVEL`,{method:'DELETE',headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`}});
+    await fetch(`${SUPABASE_URL}/rest/v1/funcionarios?id=neq.IMPOSSIVEL`,{method:'DELETE',headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`}});
+    await fetch(`${SUPABASE_URL}/rest/v1/empresas?id=neq.IMPOSSIVEL`,{method:'DELETE',headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`}});
+    await fetch(`${SUPABASE_URL}/rest/v1/escritorios?id=neq.IMPOSSIVEL`,{method:'DELETE',headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`}});
+    CACHE={escritorios:[],empresas:[],funcionarios:[],exames:[]};
+    hideLoad();alert('Todos os dados foram removidos.');R();
+  }catch(err){hideLoad();alert('Erro: '+err.message)}
+}
+
+// ===== INIT =====
+document.getElementById('dH').textContent=new Date().toLocaleDateString('pt-BR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+initT();
+
+(async function init(){
+  showLoad('Conectando ao Supabase...');
+  const ok = await loadAll();
+  hideLoad();
+  if(ok){
+    R();
+    console.log('✅ SGEO Cloud conectado!',CACHE);
+  }else{
+    document.getElementById('MC').innerHTML='<div class="cd" style="border-left:4px solid var(--dg)"><div class="cd-t">❌ Erro de Conexão</div><p style="margin-top:10px;color:var(--ts)">Não foi possível conectar ao Supabase. Verifique sua internet e recarregue a página.</p><button class="bt bt-p" onclick="location.reload()" style="margin-top:14px">🔄 Recarregar</button></div>';
+  }
+})();
+</script>
+</body>
+</html>
