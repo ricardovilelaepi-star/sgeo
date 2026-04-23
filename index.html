@@ -83,11 +83,6 @@ tr:hover td{background:#f8f9ff}
 .backup-card .icon{font-size:42px;margin-bottom:10px}
 .backup-card h3{color:var(--p);font-size:15px;margin-bottom:6px}
 .backup-card p{color:var(--ts);font-size:12px;line-height:1.5}
-.timeline{position:relative;padding-left:24px}
-.timeline::before{content:'';position:absolute;left:8px;top:0;bottom:0;width:2px;background:var(--bd)}
-.timeline-item{position:relative;padding:10px 0 10px 20px;font-size:13px}
-.timeline-item::before{content:'';position:absolute;left:-20px;top:14px;width:12px;height:12px;border-radius:50%;background:var(--p);border:2px solid #fff;box-shadow:0 0 0 2px var(--p)}
-.timeline-item.ok::before{background:var(--sc)}.timeline-item.err::before{background:var(--dg)}
 .progress-bar{width:100%;height:6px;background:var(--bd);border-radius:3px;overflow:hidden;margin:8px 0}
 .progress-bar .fill{height:100%;background:var(--ac);border-radius:3px;transition:width .5s}
 .loading-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center;flex-direction:column;color:#fff}
@@ -121,7 +116,8 @@ tr:hover td{background:#f8f9ff}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
 // ============================================================
-// SGEO 4.0 CLOUD — Supabase Direct
+// SGEO 4.1 CLOUD — Supabase Direct
+// Correções: parser DOCX + campo customizado "Outro"
 // ============================================================
 
 const SUPABASE_URL = 'https://rpnlbzqrvbarkbiosclv.supabase.co';
@@ -133,37 +129,31 @@ const HEADERS = {
   'Prefer': 'return=representation'
 };
 
-// ===== CACHE LOCAL (para performance) =====
 let CACHE = { escritorios:[], empresas:[], funcionarios:[], exames:[] };
 
 function showLoad(msg){document.getElementById('loadTxt').textContent=msg||'Carregando...';document.getElementById('loadOv').classList.add('show')}
 function hideLoad(){document.getElementById('loadOv').classList.remove('show')}
 function setSyncStatus(st,txt){const el=document.getElementById('syncSt');const tx=document.getElementById('syncTxt');el.className='sync-status sync-'+st;tx.textContent=txt}
 
-// ===== SUPABASE API =====
 async function sbGet(table){
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=*&order=criado_em.desc`, {headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`}});
   if(!res.ok) throw new Error(`Erro GET ${table}: ${res.status}`);
   return res.json();
 }
-
 async function sbInsert(table, data){
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {method:'POST', headers:HEADERS, body:JSON.stringify(data)});
   if(!res.ok){const t=await res.text();throw new Error(`Erro INSERT ${table}: ${res.status} ${t}`)}
   return res.json();
 }
-
 async function sbUpdate(table, id, data){
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {method:'PATCH', headers:HEADERS, body:JSON.stringify(data)});
   if(!res.ok){const t=await res.text();throw new Error(`Erro UPDATE ${table}: ${res.status} ${t}`)}
   return res.json();
 }
-
 async function sbDelete(table, id){
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {method:'DELETE', headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`}});
   if(!res.ok) throw new Error(`Erro DELETE ${table}: ${res.status}`);
 }
-
 async function sbUpsert(table, data){
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
     method:'POST', 
@@ -174,7 +164,6 @@ async function sbUpsert(table, data){
   return res.json();
 }
 
-// ===== CARREGAR TUDO DO SUPABASE =====
 async function loadAll(){
   try{
     setSyncStatus('pend','Carregando...');
@@ -192,7 +181,6 @@ async function loadAll(){
   }
 }
 
-// ===== HELPERS =====
 function gid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 function pd(s){if(!s)return null;s=s.trim();if(s.includes('/')){const p=s.split('/');if(p.length===3){const d=new Date(+p[2],+p[1]-1,+p[0]);return isNaN(d)?null:d}}const d=new Date(s);return isNaN(d)?null:d}
 function fd(d){if(!d)return'-';const t=new Date(d);return isNaN(t)?'-':t.toLocaleDateString('pt-BR')}
@@ -201,13 +189,19 @@ function ddf(v){const d=new Date(v),n=new Date();n.setHours(0,0,0,0);d.setHours(
 function gs(v){if(!v)return'pendente';const d=ddf(v);return d<0?'vencido':d<=15?'vencendo':'ok'}
 const TIPOS=['Clínico (ASO)','Audiometria','Hemograma (Sangue)','EEG','ECG','Acuidade Visual','Espirometria','Raio-X','Glicemia','Outro'];
 
-// ===== GETTERS (do cache) =====
+// Helper: separa "Outro: Toxicológico" em {base:"Outro", custom:"Toxicológico"}
+function parseOutro(tp){
+  if(!tp)return{base:'',custom:''};
+  const m=tp.match(/^Outro:\s*(.+)$/i);
+  if(m)return{base:'Outro',custom:m[1].trim()};
+  return{base:tp,custom:''};
+}
+
 function ld(type){
   const map = {escritorios:'escritorios',empresas:'empresas',funcionarios:'funcionarios',exames:'exames'};
   return CACHE[map[type]] || CACHE[type] || [];
 }
 
-// ===== NAV =====
 const PGS=['dashboard','empresas','funcionarios','exames','escritorios','relatorios','importar','backup'];
 const LBS=['📊 Dashboard','🏢 Empresas','👥 Funcionários','🩺 Exames','📋 Escritórios','📈 Relatórios','📥 Importar','💾 Backup'];
 let CP='dashboard',FV={};
@@ -243,7 +237,6 @@ function R(){
   if(ai){const el=document.getElementById(ai);if(el){el.focus();if(cp!==null&&el.setSelectionRange)try{el.setSelectionRange(cp,cp)}catch(e){}}}
 }
 
-// ===== DASHBOARD =====
 function pgD(){
   const es=ld('empresas'),fs=ld('funcionarios'),xs=ld('exames');const atv=fs.filter(f=>f.sit==='Ativo');
   const cnt=st=>xs.filter(x=>{const f=fs.find(ff=>ff.id===x.fId);return f&&f.sit==='Ativo'&&gs(x.vc)===st}).length;
@@ -256,7 +249,6 @@ function pgD(){
   return h+'</tbody></table></div></div>';
 }
 
-// ===== EMPRESAS =====
 function pgE(){
   const es=ld('empresas'),fs=ld('funcionarios'),xs=ld('exames'),ss=ld('escritorios');const ft=(FV['fE']||'').toLowerCase(),fe=FV['fEE']||'';
   const fil=es.filter(e=>(e.razao.toLowerCase().includes(ft)||e.cnpj.includes(ft))&&(!fe||e.escId===fe));
@@ -300,7 +292,6 @@ async function dEmp(id){
   }catch(err){alert('Erro: '+err.message)}
 }
 
-// ===== FUNCIONÁRIOS =====
 function pgF(){
   const fs=ld('funcionarios'),es=ld('empresas'),xs=ld('exames');const ft=(FV['fF']||'').toLowerCase(),fe=FV['fFE']||'',fst=FV['fFS']||'';
   const fil=fs.filter(f=>(f.nm.toLowerCase().includes(ft)||(f.cpf||'').includes(ft))&&(!fe||f.eId===fe)&&(!fst||f.sit===fst));
@@ -315,19 +306,71 @@ let ER=[];
 function mFunc(id){const f=id?ld('funcionarios').find(x=>x.id===id):null;ER=id?ld('exames').filter(x=>x.fId===id).map(x=>({tp:x.tp,dt:x.dt,vc:x.vc})):[];if(!ER.length&&!id)ER=[{tp:'Clínico (ASO)',dt:'',vc:''}];
 document.body.insertAdjacentHTML('beforeend',`<div class="mo show" id="M2"><div class="ml"><div class="ml-t">👤 ${f?'Editar':'Novo'} Funcionário</div><div class="fr"><div class="fg"><label>Nome *</label><input class="fc" id="fN" value="${f?f.nm:''}"></div><div class="fg"><label>CPF</label><input class="fc" id="fC" value="${f?f.cpf:''}"></div></div><div class="fr"><div class="fg"><label>Empresa *</label><select class="fc" id="fE2">${empO('-- Selecione --')}</select></div><div class="fg"><label>Função *</label><input class="fc" id="fFn" value="${f?f.fn:''}"></div></div><div class="fr"><div class="fg"><label>Admissão</label><input type="date" class="fc" id="fA" value="${f?f.adm:''}"></div><div class="fg"><label>Situação</label><select class="fc" id="fSt"><option value="Ativo">Ativo</option><option value="Demitido">Demitido</option></select></div></div><hr class="sep"><div class="cd-t" style="margin-bottom:12px">🩺 Exames</div><div id="ERC"></div><button class="bt bt-a bt-s" onclick="aER()" style="margin-top:8px">+ Exame</button><div class="ml-a"><button class="bt bt-o" onclick="document.getElementById('M2').remove()">Cancelar</button><button class="bt bt-p" onclick="sFunc('${id||''}')">💾 Salvar</button></div></div></div>`);
 if(f){document.getElementById('fE2').value=f.eId;document.getElementById('fSt').value=f.sit}rER()}
-function rER(){const c=document.getElementById('ERC');if(!c)return;c.innerHTML=ER.map((r,i)=>`<div class="exrow"><div class="fg" style="min-width:150px"><label>Tipo</label><select class="fc" id="xT${i}" onchange="ER[${i}].tp=this.value">${TIPOS.map(t=>`<option${r.tp===t?' selected':''}>${t}</option>`).join('')}</select></div><div class="fg" style="min-width:130px"><label>Realização</label><input type="date" class="fc" id="xD${i}" value="${r.dt||''}" onchange="ER[${i}].dt=this.value;aV(${i})"></div><div class="fg" style="min-width:130px"><label>Vencimento</label><input type="date" class="fc" id="xV${i}" value="${r.vc||''}" onchange="ER[${i}].vc=this.value"></div><button class="bt bt-d bt-s" onclick="ER.splice(${i},1);rER()">✕</button></div>`).join('')}
+
+// ===== RENDERIZAR EXAMES (COM CAMPO "OUTRO" CUSTOMIZADO) =====
+function rER(){
+  const c=document.getElementById('ERC');
+  if(!c)return;
+  c.innerHTML=ER.map((r,i)=>{
+    const parsed=parseOutro(r.tp);
+    const isOutro=parsed.base==='Outro';
+    return `<div class="exrow">
+      <div class="fg" style="min-width:140px">
+        <label>Tipo</label>
+        <select class="fc" id="xT${i}" onchange="onTipoChange(${i}, this.value)">
+          ${TIPOS.map(t=>`<option${parsed.base===t?' selected':''}>${t}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fg" style="min-width:140px;${isOutro?'':'display:none'}" id="xOW${i}">
+        <label>Qual exame? *</label>
+        <input class="fc" id="xO${i}" value="${parsed.custom}" placeholder="Ex: Toxicológico" oninput="onOutroChange(${i}, this.value)">
+      </div>
+      <div class="fg" style="min-width:130px">
+        <label>Realização</label>
+        <input type="date" class="fc" id="xD${i}" value="${r.dt||''}" onchange="ER[${i}].dt=this.value;aV(${i})">
+      </div>
+      <div class="fg" style="min-width:130px">
+        <label>Vencimento</label>
+        <input type="date" class="fc" id="xV${i}" value="${r.vc||''}" onchange="ER[${i}].vc=this.value">
+      </div>
+      <button class="bt bt-d bt-s" onclick="ER.splice(${i},1);rER()">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function onTipoChange(i, valor){
+  const wrap=document.getElementById('xOW'+i);
+  const input=document.getElementById('xO'+i);
+  if(valor==='Outro'){
+    if(wrap)wrap.style.display='';
+    const custom=input?input.value.trim():'';
+    ER[i].tp = custom ? `Outro: ${custom}` : 'Outro';
+  }else{
+    if(wrap)wrap.style.display='none';
+    if(input)input.value='';
+    ER[i].tp = valor;
+  }
+}
+function onOutroChange(i, valor){
+  const v=valor.trim();
+  ER[i].tp = v ? `Outro: ${v}` : 'Outro';
+}
+
 function aER(){ER.push({tp:'Clínico (ASO)',dt:'',vc:''});rER()}
 function aV(i){const d=document.getElementById('xD'+i).value;if(d){const dt=new Date(d);dt.setFullYear(dt.getFullYear()+1);const v=fi(dt);document.getElementById('xV'+i).value=v;ER[i].vc=v}}
+
 async function sFunc(id){
   const nm=document.getElementById('fN').value.trim(),cpf=document.getElementById('fC').value.trim(),eId=document.getElementById('fE2').value,fn=document.getElementById('fFn').value.trim(),adm=document.getElementById('fA').value,sit=document.getElementById('fSt').value;
-  if(!nm||!eId||!fn){alert('Obrigatório');return}
+  if(!nm||!eId||!fn){alert('Obrigatório: Nome, Empresa e Função');return}
+  for(let i=0;i<ER.length;i++){
+    if(ER[i].tp==='Outro'){alert(`Exame ${i+1}: informe qual exame é no campo "Qual exame?"`);return}
+  }
   try{
     let fId;
     if(id){
       await sbUpdate('funcionarios',id,{nm,cpf,e_id:eId,fn,adm,sit});
       const i=CACHE.funcionarios.findIndex(f=>f.id===id);if(i>=0)Object.assign(CACHE.funcionarios[i],{nm,cpf,eId,fn,adm,sit});
       fId=id;
-      // remover exames antigos
       const oldEx=CACHE.exames.filter(x=>x.fId===id);
       for(const ox of oldEx) await sbDelete('exames',ox.id);
       CACHE.exames=CACHE.exames.filter(x=>x.fId!==id);
@@ -336,7 +379,6 @@ async function sFunc(id){
       await sbInsert('funcionarios',{id:fId,nm,cpf,e_id:eId,fn,adm,sit});
       CACHE.funcionarios.push({id:fId,nm,cpf,eId,fn,adm,sit});
     }
-    // inserir exames
     for(const r of ER){
       if(r.tp){
         const xid=gid();
@@ -359,20 +401,63 @@ async function dFunc(id){
   }catch(err){alert('Erro: '+err.message)}
 }
 
-// ===== EXAMES =====
 function pgX(){const xs=ld('exames'),fs=ld('funcionarios'),es=ld('empresas');const fxe=FV['fXE']||'',fxt=FV['fXT']||'',fxs=FV['fXS']||'',fxf=(FV['fXF']||'').toLowerCase();
-const rows=xs.map(x=>{const f=fs.find(ff=>ff.id===x.fId);if(!f)return null;return{x,f,e:es.find(ee=>ee.id===f.eId),st:gs(x.vc),dy:x.vc?ddf(x.vc):null}}).filter(Boolean).filter(r=>(!fxe||r.f.eId===fxe)&&(!fxt||r.x.tp===fxt)&&(!fxs||r.st===fxs)&&(!fxf||r.f.nm.toLowerCase().includes(fxf))).sort((a,b)=>(a.dy===null?-9999:a.dy)-(b.dy===null?-9999:b.dy));
+const rows=xs.map(x=>{const f=fs.find(ff=>ff.id===x.fId);if(!f)return null;return{x,f,e:es.find(ee=>ee.id===f.eId),st:gs(x.vc),dy:x.vc?ddf(x.vc):null}}).filter(Boolean).filter(r=>(!fxe||r.f.eId===fxe)&&(!fxt||r.x.tp.startsWith(fxt))&&(!fxs||r.st===fxs)&&(!fxf||r.f.nm.toLowerCase().includes(fxf))).sort((a,b)=>(a.dy===null?-9999:a.dy)-(b.dy===null?-9999:b.dy));
 let h=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px"><h2 style="font-size:20px;color:var(--p)">🩺 Exames</h2><button class="bt bt-p" onclick="mEx()">+ Registrar</button></div>
 <div class="fb"><div class="fg"><label>Empresa</label><select class="fc" id="fXE" onchange="R()"><option value="">Todas</option>${es.map(e=>`<option value="${e.id}">${e.razao}</option>`).join('')}</select></div><div class="fg"><label>Tipo</label><select class="fc" id="fXT" onchange="R()"><option value="">Todos</option>${tpO()}</select></div><div class="fg"><label>Status</label><select class="fc" id="fXS" onchange="R()"><option value="">Todos</option><option value="vencido">Vencido</option><option value="vencendo">Vencendo</option><option value="pendente">Pendente</option><option value="ok">Em dia</option></select></div><div class="fg"><label>Funcionário</label><input class="fc" placeholder="Nome..." id="fXF" oninput="R()"></div></div>
 <div class="cd"><div class="tw"><table><thead><tr><th>Funcionário</th><th>Empresa</th><th>Tipo</th><th>Realização</th><th>Vencimento</th><th>Status</th><th>Dias</th><th>Ações</th></tr></thead><tbody>`;
 if(!rows.length)h+='<tr><td colspan="8" class="es">Nenhum</td></tr>';
 else rows.forEach(r=>{const bgc=r.st==='vencido'?'bg-d':r.st==='vencendo'?'bg-w':r.st==='pendente'?'bg-pn':'bg-s';const lbl=r.st==='vencido'?'Vencido':r.st==='vencendo'?'Vencendo':r.st==='pendente'?'Pendente':'Em dia';const cls=r.st==='vencido'?'cr':r.st==='vencendo'?'hr':r.st==='pendente'?'pr':'';const dtx=r.st==='pendente'?'<strong style="color:#9c27b0">—</strong>':r.st==='vencido'?`<strong style="color:var(--dg)">${Math.abs(r.dy)}d</strong>`:r.st==='vencendo'?`<strong style="color:var(--wr)">${r.dy}d</strong>`:`${r.dy}d`;h+=`<tr class="${cls}"><td><strong>${r.f.nm}</strong></td><td>${r.e?r.e.razao:'-'}</td><td><span class="tg">${r.x.tp}</span></td><td>${fd(r.x.dt)}</td><td>${fd(r.x.vc)}</td><td><span class="bg ${bgc}">${lbl}</span></td><td>${dtx}</td><td><button class="bt bt-o bt-s" onclick="mEx('${r.x.id}')">✏️</button> <button class="bt bt-d bt-s" onclick="dEx('${r.x.id}')">🗑️</button></td></tr>`});
 return h+'</tbody></table></div></div>'}
-function mEx(id){const x=id?ld('exames').find(xx=>xx.id===id):null;document.body.insertAdjacentHTML('beforeend',`<div class="mo show" id="M3"><div class="ml"><div class="ml-t">🩺 ${x?'Editar':'Registrar'} Exame</div><div class="fr"><div class="fg"><label>Funcionário *</label><select class="fc" id="xF">${fncO()}</select></div><div class="fg"><label>Tipo *</label><select class="fc" id="xT">${tpO()}</select></div></div><div class="fr"><div class="fg"><label>Realização</label><input type="date" class="fc" id="xD" value="${x?x.dt:''}" onchange="aVM()"></div><div class="fg"><label>Vencimento</label><input type="date" class="fc" id="xV" value="${x?x.vc:''}"></div></div><div class="ml-a"><button class="bt bt-o" onclick="document.getElementById('M3').remove()">Cancelar</button><button class="bt bt-p" onclick="sEx('${id||''}')">💾 Salvar</button></div></div></div>`);if(x){document.getElementById('xF').value=x.fId;document.getElementById('xT').value=x.tp}}
+
+// ===== MODAL DE EXAME AVULSO (COM CAMPO "OUTRO") =====
+function mEx(id){
+  const x=id?ld('exames').find(xx=>xx.id===id):null;
+  const parsed=x?parseOutro(x.tp):{base:'',custom:''};
+  const isOutro=parsed.base==='Outro';
+  document.body.insertAdjacentHTML('beforeend',`
+    <div class="mo show" id="M3">
+      <div class="ml">
+        <div class="ml-t">🩺 ${x?'Editar':'Registrar'} Exame</div>
+        <div class="fr">
+          <div class="fg"><label>Funcionário *</label><select class="fc" id="xF">${fncO()}</select></div>
+          <div class="fg"><label>Tipo *</label><select class="fc" id="xT" onchange="toggleOutroEx()">${tpO()}</select></div>
+        </div>
+        <div class="fg" id="xOWex" style="${isOutro?'':'display:none'}">
+          <label>Qual exame? *</label>
+          <input class="fc" id="xOex" value="${parsed.custom}" placeholder="Ex: Toxicológico, Teste de Esforço...">
+        </div>
+        <div class="fr">
+          <div class="fg"><label>Realização</label><input type="date" class="fc" id="xD" value="${x?x.dt:''}" onchange="aVM()"></div>
+          <div class="fg"><label>Vencimento</label><input type="date" class="fc" id="xV" value="${x?x.vc:''}"></div>
+        </div>
+        <div class="ml-a">
+          <button class="bt bt-o" onclick="document.getElementById('M3').remove()">Cancelar</button>
+          <button class="bt bt-p" onclick="sEx('${id||''}')">💾 Salvar</button>
+        </div>
+      </div>
+    </div>`);
+  if(x){document.getElementById('xF').value=x.fId;document.getElementById('xT').value=parsed.base}
+}
+function toggleOutroEx(){
+  const tipo=document.getElementById('xT').value;
+  const wrap=document.getElementById('xOWex');
+  const input=document.getElementById('xOex');
+  if(tipo==='Outro'){wrap.style.display=''}
+  else{wrap.style.display='none';if(input)input.value=''}
+}
 function aVM(){const d=document.getElementById('xD').value;if(d){const dt=new Date(d);dt.setFullYear(dt.getFullYear()+1);document.getElementById('xV').value=fi(dt)}}
+
 async function sEx(id){
-  const fId=document.getElementById('xF').value,tp=document.getElementById('xT').value,dt=document.getElementById('xD').value,vc=document.getElementById('xV').value;
+  const fId=document.getElementById('xF').value;
+  let tp=document.getElementById('xT').value;
+  const dt=document.getElementById('xD').value,vc=document.getElementById('xV').value;
   if(!fId||!tp){alert('Obrigatório');return}
+  if(tp==='Outro'){
+    const custom=(document.getElementById('xOex').value||'').trim();
+    if(!custom){alert('Informe qual exame é (campo "Qual exame?")');return}
+    tp=`Outro: ${custom}`;
+  }
   try{
     if(id){
       await sbUpdate('exames',id,{f_id:fId,tp,dt:dt||'',vc:vc||''});
@@ -390,7 +475,6 @@ async function dEx(id){
   try{await sbDelete('exames',id);CACHE.exames=CACHE.exames.filter(x=>x.id!==id);R()}catch(err){alert('Erro: '+err.message)}
 }
 
-// ===== ESCRITÓRIOS =====
 function pgS(){const ss=ld('escritorios'),es=ld('empresas');let h=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px"><h2 style="font-size:20px;color:var(--p)">📋 Escritórios</h2><button class="bt bt-p" onclick="mEsc()">+ Novo</button></div>`;if(!ss.length)return h+'<div class="cd es">Nenhum</div>';ss.forEach(s=>{const ee=es.filter(e=>e.escId===s.id);h+=`<div class="cd"><div class="cd-h"><div class="cd-t">📋 ${s.nome}${s.contato?' <span style="font-weight:400;font-size:11px;color:var(--ts)">📞 '+s.contato+'</span>':''}${s.email?' <span style="font-weight:400;font-size:11px;color:var(--ts)">✉️ '+s.email+'</span>':''}</div><div><button class="bt bt-o bt-s" onclick="mEsc('${s.id}')">✏️</button> <button class="bt bt-d bt-s" onclick="dEsc('${s.id}')">🗑️</button></div></div>${s.resp?'<p style="font-size:12px;color:var(--ts);margin-bottom:6px">👤 '+s.resp+'</p>':''}<p style="font-size:12px;color:var(--ts);margin-bottom:10px">Empresas: <strong>${ee.length}</strong></p>`;if(ee.length){h+='<table><thead><tr><th>Razão Social</th><th>CNPJ</th></tr></thead><tbody>';ee.forEach(e=>h+=`<tr><td>${e.razao}</td><td>${e.cnpj}</td></tr>`);h+='</tbody></table>'}h+='</div>'});return h}
 function mEsc(id){const s=id?ld('escritorios').find(x=>x.id===id):null;document.body.insertAdjacentHTML('beforeend',`<div class="mo show" id="M4"><div class="ml"><div class="ml-t">📋 ${s?'Editar':'Novo'} Escritório</div><div class="fg"><label>Nome *</label><input class="fc" id="sN" value="${s?s.nome:''}"></div><div class="fr"><div class="fg"><label>Contato</label><input class="fc" id="sC" value="${s?s.contato||'':''}"></div><div class="fg"><label>E-mail</label><input class="fc" id="sE" value="${s?s.email||'':''}"></div></div><div class="fg"><label>Responsável</label><input class="fc" id="sR" value="${s?s.resp||'':''}"></div><div class="ml-a"><button class="bt bt-o" onclick="document.getElementById('M4').remove()">Cancelar</button><button class="bt bt-p" onclick="sEs('${id||''}')">💾 Salvar</button></div></div></div>`)}
 async function sEs(id){
@@ -410,33 +494,201 @@ async function sEs(id){
 }
 async function dEsc(id){if(!confirm('Remover escritório?'))return;try{await sbDelete('escritorios',id);CACHE.escritorios=CACHE.escritorios.filter(s=>s.id!==id);R()}catch(err){alert('Erro: '+err.message)}}
 
-// ===== RELATÓRIOS =====
 function pgR(){const es=ld('empresas');const ma=`${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;const tc=TIPOS.map(t=>`<label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="${t}" class="rtc"> ${t}</label>`).join('');
 return`<h2 style="font-size:20px;color:var(--p);margin-bottom:18px">📈 Relatórios</h2><div class="cd"><div class="cd-h"><div class="cd-t">🔴 Vencidos/Pendentes por Empresa</div></div><div class="fg"><label>Empresa</label><select class="fc" id="rE" onchange="rVE()"><option value="">-- Selecione --</option>${es.map(e=>`<option value="${e.id}">${e.razao}</option>`).join('')}</select></div><div class="tw"><table><thead><tr><th>Funcionário</th><th>Função</th><th>Tipo</th><th>Vencimento</th><th>Status</th></tr></thead><tbody id="rVE"></tbody></table></div></div><div class="cd"><div class="cd-h"><div class="cd-t">📅 Vencendo no Mês</div></div><div class="fg"><label>Mês</label><input type="month" class="fc" id="rM" value="${ma}" onchange="rME()"></div><div class="tw"><table><thead><tr><th>Empresa</th><th>Funcionário</th><th>Tipo</th><th>Vencimento</th></tr></thead><tbody id="rME"></tbody></table></div></div><div class="cd"><div class="cd-h"><div class="cd-t">🩺 Por Tipo</div></div><div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px">${tc}</div><div class="fg" style="max-width:300px"><label>Status</label><select class="fc" id="rTS"><option value="vencido">Vencidos</option><option value="pendente">Pendentes</option><option value="todos">Todos com alerta</option></select></div><button class="bt bt-p" onclick="rTE()" style="margin-bottom:14px">🔍 Filtrar</button><div class="tw"><table><thead><tr><th>Empresa</th><th>Funcionário</th><th>Tipo</th><th>Vencimento</th><th>Status</th></tr></thead><tbody id="rTE"></tbody></table></div></div>`}
 function rVE(){const eId=document.getElementById('rE').value;const tb=document.getElementById('rVE');if(!eId){tb.innerHTML='';return}const fs=ld('funcionarios'),xs=ld('exames');const rows=[];fs.filter(f=>f.eId===eId&&f.sit==='Ativo').forEach(f=>{xs.filter(x=>x.fId===f.id&&gs(x.vc)!=='ok').forEach(x=>{rows.push({f,x,st:gs(x.vc)})})});if(!rows.length){tb.innerHTML='<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--sc)">✅ OK</td></tr>';return}tb.innerHTML=rows.map(r=>`<tr class="${r.st==='vencido'?'cr':'pr'}"><td><strong>${r.f.nm}</strong></td><td>${r.f.fn}</td><td><span class="tg">${r.x.tp}</span></td><td>${fd(r.x.vc)}</td><td><span class="bg ${r.st==='vencido'?'bg-d':'bg-pn'}">${r.st==='vencido'?'Vencido':'Pendente'}</span></td></tr>`).join('')}
 function rME(){const m=document.getElementById('rM').value;if(!m)return;const[a,mm]=m.split('-').map(Number);const fs=ld('funcionarios'),es=ld('empresas'),xs=ld('exames');const tb=document.getElementById('rME');const rows=[];xs.forEach(x=>{if(!x.vc)return;const v=new Date(x.vc);if(v.getFullYear()===a&&v.getMonth()+1===mm){const f=fs.find(ff=>ff.id===x.fId);if(f&&f.sit==='Ativo')rows.push({f,e:es.find(ee=>ee.id===f.eId),x})}});tb.innerHTML=!rows.length?'<tr><td colspan="4" class="es">Nenhum</td></tr>':rows.map(r=>`<tr><td>${r.e?r.e.razao:'-'}</td><td><strong>${r.f.nm}</strong></td><td><span class="tg">${r.x.tp}</span></td><td>${fd(r.x.vc)}</td></tr>`).join('')}
-function rTE(){const tipos=Array.from(document.querySelectorAll('.rtc:checked')).map(c=>c.value);const stf=document.getElementById('rTS').value;const tb=document.getElementById('rTE');if(!tipos.length){tb.innerHTML='<tr><td colspan="5" class="es">Selecione tipo(s)</td></tr>';return}const fs=ld('funcionarios'),es=ld('empresas'),xs=ld('exames');const rows=[];xs.forEach(x=>{if(!tipos.includes(x.tp))return;const f=fs.find(ff=>ff.id===x.fId);if(!f||f.sit!=='Ativo')return;const st=gs(x.vc);const inc=stf==='vencido'?st==='vencido':stf==='pendente'?st==='pendente':st!=='ok';if(inc)rows.push({f,e:es.find(ee=>ee.id===f.eId),x,st})});tb.innerHTML=!rows.length?'<tr><td colspan="5" class="es">Nenhum</td></tr>':rows.map(r=>`<tr><td>${r.e?r.e.razao:'-'}</td><td><strong>${r.f.nm}</strong></td><td><span class="tg">${r.x.tp}</span></td><td>${fd(r.x.vc)}</td><td><span class="bg ${r.st==='vencido'?'bg-d':'bg-pn'}">${r.st==='vencido'?'Vencido':'Pendente'}</span></td></tr>`).join('')}
+function rTE(){const tipos=Array.from(document.querySelectorAll('.rtc:checked')).map(c=>c.value);const stf=document.getElementById('rTS').value;const tb=document.getElementById('rTE');if(!tipos.length){tb.innerHTML='<tr><td colspan="5" class="es">Selecione tipo(s)</td></tr>';return}const fs=ld('funcionarios'),es=ld('empresas'),xs=ld('exames');const rows=[];xs.forEach(x=>{const base=parseOutro(x.tp).base;if(!tipos.includes(base))return;const f=fs.find(ff=>ff.id===x.fId);if(!f||f.sit!=='Ativo')return;const st=gs(x.vc);const inc=stf==='vencido'?st==='vencido':stf==='pendente'?st==='pendente':st!=='ok';if(inc)rows.push({f,e:es.find(ee=>ee.id===f.eId),x,st})});tb.innerHTML=!rows.length?'<tr><td colspan="5" class="es">Nenhum</td></tr>':rows.map(r=>`<tr><td>${r.e?r.e.razao:'-'}</td><td><strong>${r.f.nm}</strong></td><td><span class="tg">${r.x.tp}</span></td><td>${fd(r.x.vc)}</td><td><span class="bg ${r.st==='vencido'?'bg-d':'bg-pn'}">${r.st==='vencido'?'Vencido':'Pendente'}</span></td></tr>`).join('')}
 
-// ===== IMPORTAR WORD =====
+// ===== IMPORTAR WORD (CORRIGIDO) =====
 let ID=null;
 function pgI(){return`<h2 style="font-size:20px;color:var(--p);margin-bottom:18px">📥 Importar Word (.docx)</h2><div class="cd"><div class="cd-t" style="margin-bottom:16px">📄 Envie o arquivo</div><div class="iz" onclick="document.getElementById('impF').click()"><div style="font-size:52px;margin-bottom:10px">📂</div><p><strong>Clique para selecionar</strong></p></div><input type="file" id="impF" accept=".docx" style="display:none" onchange="hDoc(event)"><div id="impR"></div></div>`}
-function normT(t){const tipos=[];const s=(t||'').toLowerCase();if(s.includes('clin')||s.match(/\baso\b/))tipos.push('Clínico (ASO)');if(s.includes('audio'))tipos.push('Audiometria');if(s.includes('sangue')||s.includes('hemo'))tipos.push('Hemograma (Sangue)');if(s.includes('eletroencef')||s.match(/\beeg\b/))tipos.push('EEG');if(s.includes('eletrocardio')||s.match(/\becg\b/))tipos.push('ECG');if(s.includes('acuidade')||s.includes('visual'))tipos.push('Acuidade Visual');if(s.includes('espiro'))tipos.push('Espirometria');if(s.includes('raio'))tipos.push('Raio-X');if(s.includes('glicemia')||s.includes('glicem'))tipos.push('Glicemia');if(!tipos.length&&s.length>2)tipos.push('Outro');return tipos}
-async function hDoc(ev){const file=ev.target.files[0];if(!file)return;const res=document.getElementById('impR');res.innerHTML='<div class="cd" style="border-left:4px solid var(--in);margin-top:16px"><p style="color:var(--in);font-weight:600">⏳ Lendo...</p></div>';
-try{const buf=await file.arrayBuffer();const zip=await JSZip.loadAsync(buf);const dx=await zip.file('word/document.xml').async('string');const pr=new DOMParser();const xml=pr.parseFromString(dx,'application/xml');const ns='http://schemas.openxmlformats.org/wordprocessingml/2006/main';const allP=xml.getElementsByTagNameNS(ns,'p');const allText=[];for(let i=0;i<allP.length;i++){const rs=allP[i].getElementsByTagNameNS(ns,'t');let l='';for(let j=0;j<rs.length;j++)l+=rs[j].textContent;if(l.trim())allText.push(l.trim())}
-const tbls=xml.getElementsByTagNameNS(ns,'tbl');const tR=[];for(let t=0;t<tbls.length;t++){const trs=tbls[t].getElementsByTagNameNS(ns,'tr');for(let i=0;i<trs.length;i++){const tcs=trs[i].getElementsByTagNameNS(ns,'tc');const cells=[];for(let j=0;j<tcs.length;j++){const ps=tcs[j].getElementsByTagNameNS(ns,'p');let ct='';for(let k=0;k<ps.length;k++){const ts=ps[k].getElementsByTagNameNS(ns,'t');let pt='';for(let l=0;l<ts.length;l++)pt+=ts[l].textContent;if(pt.trim()){if(ct)ct+='\n';ct+=pt.trim()}}cells.push(ct)}tR.push(cells)}}
-let razao='',cnpj='',escNm='';const full=allText.join(' ');const cm=full.match(/(\d{2}[.\s]?\d{3}[.\s]?\d{3}[\/\s]?\d{4}[-\s]?\d{2})/);if(cm)cnpj=cm[1].trim();
-for(const l of allText){if(l.match(/\d{2}[.\s]?\d{3}[.\s]?\d{3}/)){const pp=l.split(/[-–—]/);razao=pp[0].replace(/CNPJ\s*/i,'').replace(cnpj,'').trim();if(pp.length>1){const lp=pp[pp.length-1].trim();if(lp.length>1&&lp.length<40&&!lp.match(/^\d/))escNm=lp}break}}
-razao=razao.replace(/\s{2,}/g,' ').replace(/CNPJ/i,'').replace(cnpj,'').trim().replace(/[-–—\s]+$/,'').trim();
-if(!escNm)for(const l of allText){const m=l.match(/(BENICONT|[A-Z]+CONT\b|Alpha|ALPHA)/i);if(m){escNm=m[0];break}}
-const emps=[];let hdr=-1;for(let i=0;i<tR.length;i++)if(tR[i].some(c=>c.match(/NOME|Nome/i))){hdr=i;break}
-for(let i=(hdr>=0?hdr+1:1);i<tR.length;i++){const row=tR[i];if(!row.length)continue;const c0=(row[0]||'').trim();if(!c0||c0.match(/^Conferido|^Contato/i))continue;const lines=c0.split('\n').map(l=>l.trim()).filter(Boolean);let nm='',cpf2='',adm2='';for(const ln of lines){const cpfM=ln.match(/CPF[:\s]*([\d.\-]+)/i);const admM=ln.match(/(?:ADM|Admiss)[:\s]*([\d\/]+)/i);if(cpfM)cpf2=cpfM[1];else if(admM)adm2=admM[1];else if(ln.length>3&&!ln.match(/^CPF|^Data|^ADM/i))nm=ln.replace(/CPF[:\s]*[\d.\-]*/i,'').trim()}
-if(!nm||nm.length<3)continue;const fn2=(row[1]||'').replace(/\n/g,' ').trim();const sit2=(row[2]||'').trim();const stEx=(row[3]||'').trim();const dtA=(row[4]||'').trim();const tpEx=(row[5]||'').replace(/\n/g,' ').trim();const dtP=(row[6]||'').trim();const tipos=normT(tpEx);const temD=dtA&&dtA.match(/\d{2}\/\d{2}\/\d{4}/);const temV=dtP&&dtP.match(/\d{2}\/\d{2}\/\d{4}/);const isPend=stEx.match(/n[ãa]o\s*tem/i)||(!temD&&tipos.length>0);
-emps.push({nome:nm,cpf:cpf2,adm:adm2,funcao:fn2,sit:sit2.match(/ativo/i)?'Ativo':'Ativo',dtAso:temD?dtA:'',tipos,dtProx:temV?dtP:'',isPend})}
-ID={razao,cnpj,escNm,employees:emps};
-let ph=`<div class="cd" style="border-left:4px solid var(--sc);margin-top:16px"><div class="cd-t" style="margin-bottom:14px">✅ Dados extraídos!</div><div class="pv"><h4>🏢 ${razao||'?'} — ${cnpj||'?'}</h4></div><div class="pv"><h4>📋 ${escNm||'Não identificado'}</h4></div><div class="pv"><h4>👥 ${emps.length} Funcionário(s)</h4>`;
-if(emps.length){ph+='<table style="margin-top:8px"><thead><tr><th>Nome</th><th>CPF</th><th>Função</th><th>Tipos</th><th>Obs</th></tr></thead><tbody>';emps.forEach(e=>{ph+=`<tr><td><strong>${e.nome}</strong></td><td>${e.cpf||'-'}</td><td>${e.funcao||'-'}</td><td>${e.tipos.map(t=>'<span class="tg">'+t+'</span>').join(' ')}</td><td>${e.isPend?'<span class="bg bg-pn">Pendente</span>':fd(e.dtAso)}</td></tr>`});ph+='</tbody></table>'}
-ph+=`</div><div class="fr" style="margin-top:16px"><div class="fg"><label>Escritório</label><select class="fc" id="impE">${escO()}</select></div><div class="fg"><label>Ou crie</label><div style="display:flex;gap:6px"><input class="fc" id="impNE" placeholder="Nome"><button class="bt bt-a bt-s" onclick="cEI()">+</button></div></div></div><div class="ml-a" style="margin-top:16px"><button class="bt bt-o" onclick="ID=null;R()">Cancelar</button><button class="bt bt-g bt-l" onclick="cImp()">✅ Importar</button></div></div>`;res.innerHTML=ph;
-if(escNm){const ss=ld('escritorios');const m=ss.find(s=>s.nome.toLowerCase()===escNm.toLowerCase());if(m)setTimeout(()=>{const s=document.getElementById('impE');if(s)s.value=m.id},50)}}catch(err){res.innerHTML=`<div class="cd" style="border-left:4px solid var(--dg);margin-top:16px"><p style="color:var(--dg)">❌ ${err.message}</p></div>`}ev.target.value=''}
+
+function normT(t){
+  const tipos=[];
+  const s=(t||'').toLowerCase();
+  if(s.includes('clin')||s.match(/\baso\b/))tipos.push('Clínico (ASO)');
+  if(s.includes('audio'))tipos.push('Audiometria');
+  if(s.includes('sangue')||s.includes('hemo'))tipos.push('Hemograma (Sangue)');
+  if(s.includes('eletroencef')||s.match(/\beeg\b/))tipos.push('EEG');
+  if(s.includes('eletrocardio')||s.match(/\becg\b/))tipos.push('ECG');
+  if(s.includes('acuidade')||s.includes('visual'))tipos.push('Acuidade Visual');
+  if(s.includes('espiro'))tipos.push('Espirometria');
+  if(s.includes('raio'))tipos.push('Raio-X');
+  if(s.includes('glicemia')||s.includes('glicem'))tipos.push('Glicemia');
+  if(!tipos.length&&s.trim().length>2)tipos.push('Outro');
+  return tipos;
+}
+
+async function hDoc(ev){
+  const file=ev.target.files[0];if(!file)return;
+  const res=document.getElementById('impR');
+  res.innerHTML='<div class="cd" style="border-left:4px solid var(--in);margin-top:16px"><p style="color:var(--in);font-weight:600">⏳ Lendo...</p></div>';
+  try{
+    const buf=await file.arrayBuffer();
+    const zip=await JSZip.loadAsync(buf);
+    const dx=await zip.file('word/document.xml').async('string');
+    const pr=new DOMParser();
+    const xml=pr.parseFromString(dx,'application/xml');
+    const ns='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+    const allP=xml.getElementsByTagNameNS(ns,'p');
+    const allText=[];
+    for(let i=0;i<allP.length;i++){
+      const rs=allP[i].getElementsByTagNameNS(ns,'t');
+      let l='';
+      for(let j=0;j<rs.length;j++)l+=rs[j].textContent;
+      if(l.trim())allText.push(l.trim());
+    }
+
+    const tbls=xml.getElementsByTagNameNS(ns,'tbl');
+    const tR=[];
+    for(let t=0;t<tbls.length;t++){
+      const trs=tbls[t].getElementsByTagNameNS(ns,'tr');
+      for(let i=0;i<trs.length;i++){
+        const tcs=trs[i].getElementsByTagNameNS(ns,'tc');
+        const cells=[];
+        for(let j=0;j<tcs.length;j++){
+          const ps=tcs[j].getElementsByTagNameNS(ns,'p');
+          let ct='';
+          for(let k=0;k<ps.length;k++){
+            const ts=ps[k].getElementsByTagNameNS(ns,'t');
+            let pt='';
+            for(let l=0;l<ts.length;l++)pt+=ts[l].textContent;
+            if(pt.trim()){if(ct)ct+='\n';ct+=pt.trim()}
+          }
+          cells.push(ct);
+        }
+        tR.push(cells);
+      }
+    }
+
+    // ---- Cabeçalho: razão, CNPJ e escritório (GENÉRICO) ----
+    let razao='',cnpj='',escNm='';
+    const full=allText.join(' ');
+    const cm=full.match(/(\d{2}[.\s]?\d{3}[.\s]?\d{3}[\/\s]?\d{4}[-\s]?\d{2})/);
+    if(cm)cnpj=cm[1].trim();
+
+    let headerLine='';
+    for(const l of allText){
+      if(cnpj && l.includes(cnpj.substring(0,6))){headerLine=l;break}
+      if(l.match(/\d{2}[.\s]?\d{3}[.\s]?\d{3}/)){headerLine=l;break}
+    }
+
+    if(headerLine){
+      let clean=headerLine
+        .replace(/CNPJ\s*[-–—:]?\s*/i,' ')
+        .replace(/CNJ\s*[-–—:]?\s*/i,' ')
+        .replace(cnpj,' ')
+        .replace(/\s{2,}/g,'  ')
+        .trim();
+
+      const parts=clean.split(/\s{2,}|\s[-–—]\s/).map(p=>p.trim()).filter(Boolean);
+
+      if(parts.length>=2){
+        razao=parts[0];
+        escNm=parts[parts.length-1];
+      }else{
+        const tokens=clean.split(/\s+/);
+        if(tokens.length>=2){
+          const last=tokens[tokens.length-1];
+          if(last.length>=4 && last===last.toUpperCase() && !last.match(/^\d/)){
+            escNm=last;
+            razao=tokens.slice(0,-1).join(' ').trim();
+          }else{
+            razao=clean;
+          }
+        }else{
+          razao=clean;
+        }
+      }
+    }
+
+    razao=(razao||'').replace(/[-–—\s]+$/,'').trim();
+    escNm=(escNm||'').replace(/[-–—\s]+$/,'').trim();
+
+    // ---- Funcionários ----
+    const emps=[];
+    let hdr=-1;
+    for(let i=0;i<tR.length;i++){
+      if(tR[i].some(c=>c.match(/NOME/i))){hdr=i;break}
+    }
+
+    for(let i=(hdr>=0?hdr+1:1);i<tR.length;i++){
+      const row=tR[i];
+      if(!row.length)continue;
+      const c0=(row[0]||'').trim();
+      if(!c0||c0.match(/^Conferido|^Contato|^CONTATO/i))continue;
+
+      const lines=c0.split('\n').map(l=>l.trim()).filter(Boolean);
+      let nm='',cpf2='',adm2='';
+
+      for(const ln of lines){
+        const cpfPref=ln.match(/CPF[:\s]*([\d.\-]+)/i);
+        const cpfSolo=ln.match(/^(\d{3}\.?\d{3}\.?\d{3}[-\s]?\d{2})$/);
+        const admPref=ln.match(/(?:ADM|Admiss[aã]o|Data\s+de\s+Admiss[aã]o)[:\s]*([\d\/]+)/i);
+
+        if(cpfPref){cpf2=cpfPref[1]}
+        else if(cpfSolo){cpf2=cpfSolo[1]}
+        else if(admPref){adm2=admPref[1]}
+        else if(
+          ln.length>3 &&
+          !ln.match(/^CPF|^Data|^ADM|^Admiss/i) &&
+          !ln.match(/^\d{3}\.?\d{3}\.?\d{3}/)
+        ){
+          if(!nm)nm=ln.replace(/CPF[:\s]*[\d.\-]*/i,'').trim();
+        }
+      }
+
+      if(!nm||nm.length<3)continue;
+
+      const fn2=(row[1]||'').replace(/\n/g,' ').trim();
+      const sit2=(row[2]||'').trim();
+      const stEx=(row[3]||'').trim();
+      const dtA=(row[4]||'').trim();
+      const tpEx=(row[5]||'').replace(/\n/g,' ').trim();
+      const dtP=(row[6]||'').trim();
+      const tipos=normT(tpEx);
+      const temD=dtA&&dtA.match(/\d{2}\/\d{2}\/\d{4}/);
+      const temV=dtP&&dtP.match(/\d{2}\/\d{2}\/\d{4}/);
+      const isPend=stEx.match(/n[ãa]o\s*tem/i)||(!temD&&tipos.length>0);
+
+      emps.push({
+        nome:nm,
+        cpf:cpf2,
+        adm:adm2,
+        funcao:fn2,
+        sit:sit2.match(/ativo/i)?'Ativo':'Ativo',
+        dtAso:temD?dtA:'',
+        tipos,
+        dtProx:temV?dtP:'',
+        isPend
+      });
+    }
+
+    ID={razao,cnpj,escNm,employees:emps};
+
+    let ph=`<div class="cd" style="border-left:4px solid var(--sc);margin-top:16px"><div class="cd-t" style="margin-bottom:14px">✅ Dados extraídos!</div><div class="pv"><h4>🏢 ${razao||'?'} — ${cnpj||'?'}</h4></div><div class="pv"><h4>📋 ${escNm||'Não identificado'}</h4></div><div class="pv"><h4>👥 ${emps.length} Funcionário(s)</h4>`;
+    if(emps.length){
+      ph+='<table style="margin-top:8px"><thead><tr><th>Nome</th><th>CPF</th><th>Função</th><th>Tipos</th><th>Obs</th></tr></thead><tbody>';
+      emps.forEach(e=>{
+        ph+=`<tr><td><strong>${e.nome}</strong></td><td>${e.cpf||'-'}</td><td>${e.funcao||'-'}</td><td>${e.tipos.map(t=>'<span class="tg">'+t+'</span>').join(' ')}</td><td>${e.isPend?'<span class="bg bg-pn">Pendente</span>':fd(e.dtAso)}</td></tr>`;
+      });
+      ph+='</tbody></table>';
+    }
+    ph+=`</div><div class="fr" style="margin-top:16px"><div class="fg"><label>Escritório</label><select class="fc" id="impE">${escO()}</select></div><div class="fg"><label>Ou crie</label><div style="display:flex;gap:6px"><input class="fc" id="impNE" placeholder="Nome"><button class="bt bt-a bt-s" onclick="cEI()">+</button></div></div></div><div class="ml-a" style="margin-top:16px"><button class="bt bt-o" onclick="ID=null;R()">Cancelar</button><button class="bt bt-g bt-l" onclick="cImp()">✅ Importar</button></div></div>`;
+    res.innerHTML=ph;
+
+    if(escNm){
+      const ss=ld('escritorios');
+      const m=ss.find(s=>s.nome.toLowerCase()===escNm.toLowerCase());
+      if(m)setTimeout(()=>{const s=document.getElementById('impE');if(s)s.value=m.id},50);
+    }
+  }catch(err){
+    res.innerHTML=`<div class="cd" style="border-left:4px solid var(--dg);margin-top:16px"><p style="color:var(--dg)">❌ ${err.message}</p></div>`;
+  }
+  ev.target.value='';
+}
+
 async function cEI(){
   const nm=document.getElementById('impNE').value.trim();if(!nm)return;
   try{
@@ -471,7 +723,6 @@ async function cImp(){
   }catch(err){hideLoad();alert('Erro na importação: '+err.message)}
 }
 
-// ===== BACKUP PAGE =====
 function pgB(){
   const es=ld('empresas'),fs=ld('funcionarios'),xs=ld('exames'),ss=ld('escritorios');
   let h=`<h2 style="font-size:20px;color:var(--p);margin-bottom:18px">💾 Backup & Dados</h2>
@@ -498,7 +749,7 @@ function pgB(){
 }
 
 function exportBackup(){
-  const data={sgeo_version:'4.0',exported:new Date().toISOString(),empresas:ld('empresas'),funcionarios:ld('funcionarios'),exames:ld('exames'),escritorios:ld('escritorios')};
+  const data={sgeo_version:'4.1',exported:new Date().toISOString(),empresas:ld('empresas'),funcionarios:ld('funcionarios'),exames:ld('exames'),escritorios:ld('escritorios')};
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);const a=document.createElement('a');
   a.href=url;a.download=`SGEO_Backup_${new Date().toISOString().slice(0,10)}.json`;a.click();
@@ -516,30 +767,21 @@ function importBackup(){
         if(!data.empresas&&!data.funcionarios){alert('❌ Arquivo inválido');return}
         if(!confirm(`⚠️ Enviar dados do backup para a NUVEM?\n\nBackup: ${data.exported||'?'}\nEscritórios: ${(data.escritorios||[]).length}\nEmpresas: ${(data.empresas||[]).length}\nFuncionários: ${(data.funcionarios||[]).length}\nExames: ${(data.exames||[]).length}\n\nDados existentes serão mesclados (upsert).`))return;
         showLoad('Enviando backup para a nuvem...');
-        // Upsert escritorios
         if(data.escritorios&&data.escritorios.length){
           const batch=data.escritorios.map(s=>({id:s.id,nome:s.nome||'',contato:s.contato||'',email:s.email||'',resp:s.resp||''}));
           await sbUpsert('escritorios',batch);
         }
-        // Upsert empresas
         if(data.empresas&&data.empresas.length){
           const batch=data.empresas.map(e=>({id:e.id,razao:e.razao||'',cnpj:e.cnpj||'',esc_id:e.escId||''}));
           await sbUpsert('empresas',batch);
         }
-        // Upsert funcionarios
         if(data.funcionarios&&data.funcionarios.length){
           const batch=data.funcionarios.map(f=>({id:f.id,nm:f.nm||'',cpf:f.cpf||'',e_id:f.eId||'',fn:f.fn||'',adm:f.adm||'',sit:f.sit||'Ativo'}));
-          // Supabase tem limite de payload, enviar em lotes de 500
-          for(let i=0;i<batch.length;i+=500){
-            await sbUpsert('funcionarios',batch.slice(i,i+500));
-          }
+          for(let i=0;i<batch.length;i+=500){await sbUpsert('funcionarios',batch.slice(i,i+500))}
         }
-        // Upsert exames
         if(data.exames&&data.exames.length){
           const batch=data.exames.map(x=>({id:x.id,f_id:x.fId||'',tp:x.tp||'',dt:x.dt||'',vc:x.vc||''}));
-          for(let i=0;i<batch.length;i+=500){
-            await sbUpsert('exames',batch.slice(i,i+500));
-          }
+          for(let i=0;i<batch.length;i+=500){await sbUpsert('exames',batch.slice(i,i+500))}
         }
         await loadAll();
         hideLoad();
@@ -563,7 +805,6 @@ async function resetAll(){
   if(!confirm('TEM CERTEZA ABSOLUTA?'))return;
   showLoad('Removendo dados...');
   try{
-    // Deletar tudo via API (truncate via delete sem filtro)
     await fetch(`${SUPABASE_URL}/rest/v1/exames?id=neq.IMPOSSIVEL`,{method:'DELETE',headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`}});
     await fetch(`${SUPABASE_URL}/rest/v1/funcionarios?id=neq.IMPOSSIVEL`,{method:'DELETE',headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`}});
     await fetch(`${SUPABASE_URL}/rest/v1/empresas?id=neq.IMPOSSIVEL`,{method:'DELETE',headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`}});
@@ -573,7 +814,6 @@ async function resetAll(){
   }catch(err){hideLoad();alert('Erro: '+err.message)}
 }
 
-// ===== INIT =====
 document.getElementById('dH').textContent=new Date().toLocaleDateString('pt-BR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
 initT();
 
@@ -583,7 +823,7 @@ initT();
   hideLoad();
   if(ok){
     R();
-    console.log('✅ SGEO Cloud conectado!',CACHE);
+    console.log('✅ SGEO Cloud 4.1 conectado!',CACHE);
   }else{
     document.getElementById('MC').innerHTML='<div class="cd" style="border-left:4px solid var(--dg)"><div class="cd-t">❌ Erro de Conexão</div><p style="margin-top:10px;color:var(--ts)">Não foi possível conectar ao Supabase. Verifique sua internet e recarregue a página.</p><button class="bt bt-p" onclick="location.reload()" style="margin-top:14px">🔄 Recarregar</button></div>';
   }
