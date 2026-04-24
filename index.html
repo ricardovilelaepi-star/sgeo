@@ -116,8 +116,10 @@ tr:hover td{background:#f8f9ff}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
 // ============================================================
-// SGEO 4.1 CLOUD — Supabase Direct
-// Correções: parser DOCX + campo customizado "Outro"
+// SGEO 4.2 CLOUD — Supabase Direct
+// 4.1: parser DOCX + campo "Outro"
+// 4.2: suporte ao formato CLUBE DOS BANCÁRIOS (cabeçalho inline,
+//      nome+CPF grudados, ADM em linha, funcionários sem exame)
 // ============================================================
 
 const SUPABASE_URL = 'https://rpnlbzqrvbarkbiosclv.supabase.co';
@@ -311,6 +313,7 @@ if(f){document.getElementById('fE2').value=f.eId;document.getElementById('fSt').
 function rER(){
   const c=document.getElementById('ERC');
   if(!c)return;
+  if(!ER.length){c.innerHTML='<p style="color:var(--ts);font-size:12px;padding:10px;text-align:center">Nenhum exame. Clique em "+ Exame" para adicionar.</p>';return}
   c.innerHTML=ER.map((r,i)=>{
     const parsed=parseOutro(r.tp);
     const isOutro=parsed.base==='Outro';
@@ -500,9 +503,11 @@ function rVE(){const eId=document.getElementById('rE').value;const tb=document.g
 function rME(){const m=document.getElementById('rM').value;if(!m)return;const[a,mm]=m.split('-').map(Number);const fs=ld('funcionarios'),es=ld('empresas'),xs=ld('exames');const tb=document.getElementById('rME');const rows=[];xs.forEach(x=>{if(!x.vc)return;const v=new Date(x.vc);if(v.getFullYear()===a&&v.getMonth()+1===mm){const f=fs.find(ff=>ff.id===x.fId);if(f&&f.sit==='Ativo')rows.push({f,e:es.find(ee=>ee.id===f.eId),x})}});tb.innerHTML=!rows.length?'<tr><td colspan="4" class="es">Nenhum</td></tr>':rows.map(r=>`<tr><td>${r.e?r.e.razao:'-'}</td><td><strong>${r.f.nm}</strong></td><td><span class="tg">${r.x.tp}</span></td><td>${fd(r.x.vc)}</td></tr>`).join('')}
 function rTE(){const tipos=Array.from(document.querySelectorAll('.rtc:checked')).map(c=>c.value);const stf=document.getElementById('rTS').value;const tb=document.getElementById('rTE');if(!tipos.length){tb.innerHTML='<tr><td colspan="5" class="es">Selecione tipo(s)</td></tr>';return}const fs=ld('funcionarios'),es=ld('empresas'),xs=ld('exames');const rows=[];xs.forEach(x=>{const base=parseOutro(x.tp).base;if(!tipos.includes(base))return;const f=fs.find(ff=>ff.id===x.fId);if(!f||f.sit!=='Ativo')return;const st=gs(x.vc);const inc=stf==='vencido'?st==='vencido':stf==='pendente'?st==='pendente':st!=='ok';if(inc)rows.push({f,e:es.find(ee=>ee.id===f.eId),x,st})});tb.innerHTML=!rows.length?'<tr><td colspan="5" class="es">Nenhum</td></tr>':rows.map(r=>`<tr><td>${r.e?r.e.razao:'-'}</td><td><strong>${r.f.nm}</strong></td><td><span class="tg">${r.x.tp}</span></td><td>${fd(r.x.vc)}</td><td><span class="bg ${r.st==='vencido'?'bg-d':'bg-pn'}">${r.st==='vencido'?'Vencido':'Pendente'}</span></td></tr>`).join('')}
 
-// ===== IMPORTAR WORD (CORRIGIDO) =====
+// ============================================================
+// IMPORTAR WORD — SUPORTE DUPLO (TOPLLAR + CLUBE BANCÁRIOS)
+// ============================================================
 let ID=null;
-function pgI(){return`<h2 style="font-size:20px;color:var(--p);margin-bottom:18px">📥 Importar Word (.docx)</h2><div class="cd"><div class="cd-t" style="margin-bottom:16px">📄 Envie o arquivo</div><div class="iz" onclick="document.getElementById('impF').click()"><div style="font-size:52px;margin-bottom:10px">📂</div><p><strong>Clique para selecionar</strong></p></div><input type="file" id="impF" accept=".docx" style="display:none" onchange="hDoc(event)"><div id="impR"></div></div>`}
+function pgI(){return`<h2 style="font-size:20px;color:var(--p);margin-bottom:18px">📥 Importar Word (.docx)</h2><div class="cd"><div class="cd-t" style="margin-bottom:16px">📄 Envie o arquivo</div><div class="iz" onclick="document.getElementById('impF').click()"><div style="font-size:52px;margin-bottom:10px">📂</div><p><strong>Clique para selecionar</strong></p><p style="font-size:11px;color:var(--ts);margin-top:6px">Formatos suportados: TOPLLAR, CLUBE DOS BANCÁRIOS e similares</p></div><input type="file" id="impF" accept=".docx" style="display:none" onchange="hDoc(event)"><div id="impR"></div></div>`}
 
 function normT(t){
   const tipos=[];
@@ -520,6 +525,149 @@ function normT(t){
   return tipos;
 }
 
+// ===== NORMALIZAR SITUAÇÃO: "Afastado"/"ATIVO"/etc => "Ativo" (sua escolha: P2 = C) =====
+function normSit(s){
+  if(!s)return'Ativo';
+  const low=s.toLowerCase().trim();
+  if(low.match(/demit|desligad|inativ/))return'Demitido';
+  // Afastado, Férias, ATIVO, Ativo, etc => Ativo
+  return'Ativo';
+}
+
+// ===== LIMPAR PREFIXOS DE CABEÇALHO (Razão Social:, CNPJ:, Escritório:) =====
+function cleanHeader(s){
+  return (s||'')
+    .replace(/^raz[aã]o\s*social\s*[-–—:]?\s*/i,'')
+    .replace(/^empresa\s*[-–—:]?\s*/i,'')
+    .replace(/^nome\s*fantasia\s*[-–—:]?\s*/i,'')
+    .replace(/CNPJ\s*[-–—:]?\s*[\d.\-\/\s]+/gi,'')
+    .replace(/CNJ\s*[-–—:]?\s*[\d.\-\/\s]+/gi,'')
+    .replace(/^escrit[oó]rio\s*[-–—:]?\s*/i,'')
+    .replace(/[-–—\s]+$/,'')
+    .trim();
+}
+
+// ===== EXTRAIR CABEÇALHO (razão, CNPJ, escritório) =====
+// Suporta dois formatos:
+//   A) Uma linha com tudo: "Razão Social: X   CNPJ: Y   Escritório: Z"
+//   B) Linhas separadas (padrão antigo TOPLLAR)
+function extractHeader(allText){
+  let razao='',cnpj='',escNm='';
+  const full=allText.join(' ');
+
+  // CNPJ (funciona em ambos formatos)
+  const cm=full.match(/(\d{2}[.\s]?\d{3}[.\s]?\d{3}[\/\s]?\d{4}[-\s]?\d{2})/);
+  if(cm)cnpj=cm[1].trim();
+
+  // ---- Tentativa 1: formato "inline" com rótulos "Razão Social:", "Escritório:" ----
+  for(const line of allText){
+    const hasRazao=/raz[aã]o\s*social\s*[:\-–—]/i.test(line);
+    const hasEsc=/escrit[oó]rio\s*[:\-–—]/i.test(line);
+    if(hasRazao||hasEsc){
+      // Extrai razão social
+      const mRaz=line.match(/raz[aã]o\s*social\s*[:\-–—]\s*(.+?)(?=\s{2,}|\s*CNPJ|\s*CNJ|\s*Escrit[oó]rio|$)/i);
+      if(mRaz)razao=mRaz[1].trim();
+      // Extrai escritório
+      const mEsc=line.match(/escrit[oó]rio\s*[:\-–—]\s*(.+?)(?=\s{2,}|$)/i);
+      if(mEsc)escNm=mEsc[1].trim();
+      if(razao||escNm)break;
+    }
+  }
+
+  // ---- Tentativa 2: formato TOPLLAR (linha com CNPJ sem rótulo) ----
+  if(!razao){
+    let headerLine='';
+    for(const l of allText){
+      if(cnpj && l.includes(cnpj.substring(0,6))){headerLine=l;break}
+      if(l.match(/\d{2}[.\s]?\d{3}[.\s]?\d{3}/) && !l.match(/CPF/i)){headerLine=l;break}
+    }
+    if(headerLine){
+      let clean=headerLine
+        .replace(/CNPJ\s*[-–—:]?\s*/i,' ')
+        .replace(/CNJ\s*[-–—:]?\s*/i,' ')
+        .replace(cnpj,' ')
+        .replace(/\s{2,}/g,'  ')
+        .trim();
+      const parts=clean.split(/\s{2,}|\s[-–—]\s/).map(p=>p.trim()).filter(Boolean);
+      if(parts.length>=2){
+        razao=parts[0];
+        escNm=escNm||parts[parts.length-1];
+      }else{
+        const tokens=clean.split(/\s+/);
+        if(tokens.length>=2){
+          const last=tokens[tokens.length-1];
+          if(last.length>=4 && last===last.toUpperCase() && !last.match(/^\d/)){
+            escNm=escNm||last;
+            razao=tokens.slice(0,-1).join(' ').trim();
+          }else{
+            razao=clean;
+          }
+        }else{
+          razao=clean;
+        }
+      }
+    }
+  }
+
+  // Limpa prefixos residuais
+  razao=cleanHeader(razao);
+  escNm=cleanHeader(escNm);
+  return {razao,cnpj,escNm};
+}
+
+// ===== PARSE DE BLOCO DE NOME/CPF/ADM =====
+// Recebe a string da 1ª coluna da linha do funcionário e extrai:
+//   - nome
+//   - cpf
+//   - admissão
+// Funciona para ambos formatos:
+//   TOPLLAR:  "NOME\nCPF: 123.456.789-00\nADM: 01/01/2020"
+//   CBI:      "NOMECPF: 123.456.789-00\nADM: 01/11/2001"  (nome+CPF grudados)
+function parseNomeCpfAdm(raw){
+  let nm='',cpf='',adm='';
+  if(!raw)return{nm,cpf,adm};
+
+  // Detecta se NOME e CPF estão grudados (ex: "ALESSANDRA CAMAS BATISTACPF: 190.899.908-01")
+  // Se encontrar "CPF:" no meio de uma linha que começa com letras, separa
+  const gluedMatch=raw.match(/^([A-ZÀ-Úa-zà-ú][A-ZÀ-Úa-zà-ú\s'`´^~\.]+?)\s*CPF\s*[:\s]+([\d.\-\s]+)/);
+  if(gluedMatch){
+    nm=gluedMatch[1].trim();
+    cpf=gluedMatch[2].replace(/\s+/g,'').trim();
+    // Procura ADM no restante
+    const admMatch=raw.match(/(?:ADM|Admiss[aã]o|Data\s+de\s+Admiss[aã]o)[:\s]+(\d{2}\/\d{2}\/\d{4})/i);
+    if(admMatch)adm=admMatch[1];
+    return{nm,cpf,adm};
+  }
+
+  // Formato em linhas separadas (TOPLLAR)
+  const lines=raw.split('\n').map(l=>l.trim()).filter(Boolean);
+  for(const ln of lines){
+    const cpfPref=ln.match(/CPF[:\s]*([\d.\-]+)/i);
+    const cpfSolo=ln.match(/^(\d{3}\.?\d{3}\.?\d{3}[-\s]?\d{2})$/);
+    const admPref=ln.match(/(?:ADM|Admiss[aã]o|Data\s+de\s+Admiss[aã]o)[:\s]*([\d\/]+)/i);
+
+    if(cpfPref){cpf=cpfPref[1]}
+    else if(cpfSolo){cpf=cpfSolo[1]}
+    else if(admPref){adm=admPref[1]}
+    else if(
+      ln.length>3 &&
+      !ln.match(/^CPF|^Data|^ADM|^Admiss/i) &&
+      !ln.match(/^\d{3}\.?\d{3}\.?\d{3}/)
+    ){
+      if(!nm)nm=ln.replace(/CPF[:\s]*[\d.\-]*/i,'').trim();
+    }
+  }
+
+  return{nm,cpf,adm};
+}
+
+// ===== DETECTAR SE LINHA É "SEM EXAMES" =====
+function isSemExames(texto){
+  if(!texto)return false;
+  const s=texto.toLowerCase();
+  return /n[aã]o\s*tem\s*exam|sem\s*exam|nenhum\s*exam/.test(s);
+}
+
 async function hDoc(ev){
   const file=ev.target.files[0];if(!file)return;
   const res=document.getElementById('impR');
@@ -531,6 +679,8 @@ async function hDoc(ev){
     const pr=new DOMParser();
     const xml=pr.parseFromString(dx,'application/xml');
     const ns='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+
+    // Extrai todos os parágrafos (texto fora de tabelas)
     const allP=xml.getElementsByTagNameNS(ns,'p');
     const allText=[];
     for(let i=0;i<allP.length;i++){
@@ -540,6 +690,7 @@ async function hDoc(ev){
       if(l.trim())allText.push(l.trim());
     }
 
+    // Extrai tabelas
     const tbls=xml.getElementsByTagNameNS(ns,'tbl');
     const tR=[];
     for(let t=0;t<tbls.length;t++){
@@ -562,83 +713,36 @@ async function hDoc(ev){
       }
     }
 
-    // ---- Cabeçalho: razão, CNPJ e escritório (GENÉRICO) ----
-    let razao='',cnpj='',escNm='';
-    const full=allText.join(' ');
-    const cm=full.match(/(\d{2}[.\s]?\d{3}[.\s]?\d{3}[\/\s]?\d{4}[-\s]?\d{2})/);
-    if(cm)cnpj=cm[1].trim();
-
-    let headerLine='';
-    for(const l of allText){
-      if(cnpj && l.includes(cnpj.substring(0,6))){headerLine=l;break}
-      if(l.match(/\d{2}[.\s]?\d{3}[.\s]?\d{3}/)){headerLine=l;break}
-    }
-
-    if(headerLine){
-      let clean=headerLine
-        .replace(/CNPJ\s*[-–—:]?\s*/i,' ')
-        .replace(/CNJ\s*[-–—:]?\s*/i,' ')
-        .replace(cnpj,' ')
-        .replace(/\s{2,}/g,'  ')
-        .trim();
-
-      const parts=clean.split(/\s{2,}|\s[-–—]\s/).map(p=>p.trim()).filter(Boolean);
-
-      if(parts.length>=2){
-        razao=parts[0];
-        escNm=parts[parts.length-1];
-      }else{
-        const tokens=clean.split(/\s+/);
-        if(tokens.length>=2){
-          const last=tokens[tokens.length-1];
-          if(last.length>=4 && last===last.toUpperCase() && !last.match(/^\d/)){
-            escNm=last;
-            razao=tokens.slice(0,-1).join(' ').trim();
-          }else{
-            razao=clean;
-          }
-        }else{
-          razao=clean;
+    // ---- Também considera as primeiras linhas das tabelas como possível cabeçalho
+    // (porque no CBI o cabeçalho pode estar dentro da tabela)
+    const allHeaderCandidates=[...allText];
+    for(let i=0;i<Math.min(tR.length,3);i++){
+      for(const cell of tR[i]){
+        if(cell && cell.length>5 && (cell.match(/raz[aã]o|CNPJ|escrit/i))){
+          cell.split('\n').forEach(ln=>{if(ln.trim())allHeaderCandidates.push(ln.trim())});
         }
       }
     }
 
-    razao=(razao||'').replace(/[-–—\s]+$/,'').trim();
-    escNm=(escNm||'').replace(/[-–—\s]+$/,'').trim();
+    // ---- Extrai cabeçalho (razão, CNPJ, escritório) ----
+    const hdr=extractHeader(allHeaderCandidates);
+    const {razao,cnpj,escNm}=hdr;
 
     // ---- Funcionários ----
     const emps=[];
-    let hdr=-1;
+    let headerIdx=-1;
     for(let i=0;i<tR.length;i++){
-      if(tR[i].some(c=>c.match(/NOME/i))){hdr=i;break}
+      if(tR[i].some(c=>c.match(/^NOME$|\bNOME\b/i))){headerIdx=i;break}
     }
 
-    for(let i=(hdr>=0?hdr+1:1);i<tR.length;i++){
+    for(let i=(headerIdx>=0?headerIdx+1:1);i<tR.length;i++){
       const row=tR[i];
       if(!row.length)continue;
       const c0=(row[0]||'').trim();
-      if(!c0||c0.match(/^Conferido|^Contato|^CONTATO/i))continue;
+      if(!c0||c0.match(/^Conferido|^Contato|^CONTATO|^OBS|^Observa/i))continue;
 
-      const lines=c0.split('\n').map(l=>l.trim()).filter(Boolean);
-      let nm='',cpf2='',adm2='';
-
-      for(const ln of lines){
-        const cpfPref=ln.match(/CPF[:\s]*([\d.\-]+)/i);
-        const cpfSolo=ln.match(/^(\d{3}\.?\d{3}\.?\d{3}[-\s]?\d{2})$/);
-        const admPref=ln.match(/(?:ADM|Admiss[aã]o|Data\s+de\s+Admiss[aã]o)[:\s]*([\d\/]+)/i);
-
-        if(cpfPref){cpf2=cpfPref[1]}
-        else if(cpfSolo){cpf2=cpfSolo[1]}
-        else if(admPref){adm2=admPref[1]}
-        else if(
-          ln.length>3 &&
-          !ln.match(/^CPF|^Data|^ADM|^Admiss/i) &&
-          !ln.match(/^\d{3}\.?\d{3}\.?\d{3}/)
-        ){
-          if(!nm)nm=ln.replace(/CPF[:\s]*[\d.\-]*/i,'').trim();
-        }
-      }
-
+      // Parse nome/CPF/ADM
+      const {nm,cpf,adm}=parseNomeCpfAdm(c0);
       if(!nm||nm.length<3)continue;
 
       const fn2=(row[1]||'').replace(/\n/g,' ').trim();
@@ -647,31 +751,42 @@ async function hDoc(ev){
       const dtA=(row[4]||'').trim();
       const tpEx=(row[5]||'').replace(/\n/g,' ').trim();
       const dtP=(row[6]||'').trim();
-      const tipos=normT(tpEx);
+
+      // Verifica se funcionário está "sem exames" (CBI)
+      const semExames=isSemExames(stEx)||isSemExames(tpEx)||isSemExames(c0);
+
+      const tipos=semExames?[]:normT(tpEx);
       const temD=dtA&&dtA.match(/\d{2}\/\d{2}\/\d{4}/);
       const temV=dtP&&dtP.match(/\d{2}\/\d{2}\/\d{4}/);
-      const isPend=stEx.match(/n[ãa]o\s*tem/i)||(!temD&&tipos.length>0);
+      const isPend=!semExames&&(stEx.match(/n[ãa]o\s*tem/i)||(!temD&&tipos.length>0));
 
       emps.push({
         nome:nm,
-        cpf:cpf2,
-        adm:adm2,
+        cpf:cpf,
+        adm:adm,
         funcao:fn2,
-        sit:sit2.match(/ativo/i)?'Ativo':'Ativo',
+        sit:normSit(sit2),
         dtAso:temD?dtA:'',
         tipos,
         dtProx:temV?dtP:'',
-        isPend
+        isPend,
+        semExames
       });
     }
 
     ID={razao,cnpj,escNm,employees:emps};
 
-    let ph=`<div class="cd" style="border-left:4px solid var(--sc);margin-top:16px"><div class="cd-t" style="margin-bottom:14px">✅ Dados extraídos!</div><div class="pv"><h4>🏢 ${razao||'?'} — ${cnpj||'?'}</h4></div><div class="pv"><h4>📋 ${escNm||'Não identificado'}</h4></div><div class="pv"><h4>👥 ${emps.length} Funcionário(s)</h4>`;
+    // ---- Renderiza prévia ----
+    let ph=`<div class="cd" style="border-left:4px solid var(--sc);margin-top:16px"><div class="cd-t" style="margin-bottom:14px">✅ Dados extraídos!</div><div class="pv"><h4>🏢 ${razao||'?'} — ${cnpj||'?'}</h4></div><div class="pv"><h4>📋 Escritório: ${escNm||'Não identificado'}</h4></div><div class="pv"><h4>👥 ${emps.length} Funcionário(s)</h4>`;
     if(emps.length){
       ph+='<table style="margin-top:8px"><thead><tr><th>Nome</th><th>CPF</th><th>Função</th><th>Tipos</th><th>Obs</th></tr></thead><tbody>';
       emps.forEach(e=>{
-        ph+=`<tr><td><strong>${e.nome}</strong></td><td>${e.cpf||'-'}</td><td>${e.funcao||'-'}</td><td>${e.tipos.map(t=>'<span class="tg">'+t+'</span>').join(' ')}</td><td>${e.isPend?'<span class="bg bg-pn">Pendente</span>':fd(e.dtAso)}</td></tr>`;
+        let obs='';
+        if(e.semExames)obs='<span class="bg bg-n">Sem exames</span>';
+        else if(e.isPend)obs='<span class="bg bg-pn">Pendente</span>';
+        else obs=fd(e.dtAso);
+        const tipos=e.tipos.length?e.tipos.map(t=>'<span class="tg">'+t+'</span>').join(' '):'<span style="color:var(--ts);font-size:11px">—</span>';
+        ph+=`<tr><td><strong>${e.nome}</strong></td><td>${e.cpf||'-'}</td><td>${e.funcao||'-'}</td><td>${tipos}</td><td>${obs}</td></tr>`;
       });
       ph+='</tbody></table>';
     }
@@ -684,6 +799,7 @@ async function hDoc(ev){
       if(m)setTimeout(()=>{const s=document.getElementById('impE');if(s)s.value=m.id},50);
     }
   }catch(err){
+    console.error('Erro parse DOCX:',err);
     res.innerHTML=`<div class="cd" style="border-left:4px solid var(--dg);margin-top:16px"><p style="color:var(--dg)">❌ ${err.message}</p></div>`;
   }
   ev.target.value='';
@@ -705,12 +821,20 @@ async function cImp(){
     if(!escId&&escNm){const m=CACHE.escritorios.find(s=>s.nome.toLowerCase()===escNm.toLowerCase());if(m)escId=m.id;else{escId=gid();await sbInsert('escritorios',{id:escId,nome:escNm,contato:'',email:'',resp:''});CACHE.escritorios.push({id:escId,nome:escNm,contato:'',email:'',resp:''})}}
     let emp=cnpj?CACHE.empresas.find(e=>e.cnpj.replace(/\D/g,'')===cnpj.replace(/\D/g,'')):null;
     if(!emp){const eid=gid();emp={id:eid,razao:razao||'Importada',cnpj:cnpj||'',escId};await sbInsert('empresas',{id:eid,razao:emp.razao,cnpj:emp.cnpj,esc_id:escId});CACHE.empresas.push(emp)}else{if(escId){emp.escId=escId;await sbUpdate('empresas',emp.id,{esc_id:escId})}}
-    let log='',cF=0,cX=0;
+    let log='',cF=0,cX=0,cS=0;
     for(const e of employees){
       let ex=e.cpf?CACHE.funcionarios.find(f=>f.cpf&&f.cpf.replace(/\D/g,'')===e.cpf.replace(/\D/g,'')&&f.eId===emp.id):null;
       let fId;
       if(ex){fId=ex.id;Object.assign(ex,{nm:e.nome,fn:e.funcao||ex.fn,sit:e.sit});if(e.adm){const dt=pd(e.adm);if(dt)ex.adm=fi(dt)}await sbUpdate('funcionarios',fId,{nm:ex.nm,cpf:ex.cpf,e_id:ex.eId,fn:ex.fn,adm:ex.adm,sit:ex.sit});log+=`<div style="color:#ff0">⚠️ ${e.nome} — atualizado</div>`}
       else{fId=gid();const admDt=pd(e.adm);const nf={id:fId,nm:e.nome,cpf:e.cpf||'',eId:emp.id,fn:e.funcao||'?',adm:admDt?fi(admDt):'',sit:e.sit||'Ativo'};await sbInsert('funcionarios',{id:fId,nm:nf.nm,cpf:nf.cpf,e_id:nf.eId,fn:nf.fn,adm:nf.adm,sit:nf.sit});CACHE.funcionarios.push(nf);cF++;log+=`<div style="color:#0f0">✅ ${e.nome}</div>`}
+      
+      // FUNCIONÁRIO SEM EXAMES (sua escolha P1 = A): não cria nenhum exame
+      if(e.semExames||!e.tipos.length){
+        cS++;
+        log+=`<div style="color:#888">  — sem exames (adicionar manualmente)</div>`;
+        continue;
+      }
+      
       const dtAso=pd(e.dtAso);const dtProx=e.dtProx?pd(e.dtProx):null;
       for(const tp of e.tipos){
         const xid=gid();
@@ -719,7 +843,7 @@ async function cImp(){
       }
     }
     hideLoad();
-    document.getElementById('impR').innerHTML=`<div class="cd" style="border-left:4px solid var(--sc);margin-top:16px"><div class="cd-t" style="margin-bottom:14px">✅ Importação Concluída!</div><div class="sr"><div class="sc sc2"><div class="sn">1</div><div class="sl">Empresa</div></div><div class="sc in"><div class="sn">${cF}</div><div class="sl">Funcionários</div></div><div class="sc"><div class="sn">${cX}</div><div class="sl">Exames</div></div></div><div class="lg">${log}</div><div class="ml-a" style="margin-top:16px"><button class="bt bt-p" onclick="gP('dashboard')">📊 Dashboard</button><button class="bt bt-a" onclick="ID=null;R()">📥 Nova</button></div></div>`;ID=null;rN();
+    document.getElementById('impR').innerHTML=`<div class="cd" style="border-left:4px solid var(--sc);margin-top:16px"><div class="cd-t" style="margin-bottom:14px">✅ Importação Concluída!</div><div class="sr"><div class="sc sc2"><div class="sn">1</div><div class="sl">Empresa</div></div><div class="sc in"><div class="sn">${cF}</div><div class="sl">Funcionários</div></div><div class="sc"><div class="sn">${cX}</div><div class="sl">Exames</div></div><div class="sc pn"><div class="sn">${cS}</div><div class="sl">Sem Exames</div></div></div><div class="lg">${log}</div><div class="ml-a" style="margin-top:16px"><button class="bt bt-p" onclick="gP('dashboard')">📊 Dashboard</button><button class="bt bt-a" onclick="ID=null;R()">📥 Nova</button></div></div>`;ID=null;rN();
   }catch(err){hideLoad();alert('Erro na importação: '+err.message)}
 }
 
@@ -749,7 +873,7 @@ function pgB(){
 }
 
 function exportBackup(){
-  const data={sgeo_version:'4.1',exported:new Date().toISOString(),empresas:ld('empresas'),funcionarios:ld('funcionarios'),exames:ld('exames'),escritorios:ld('escritorios')};
+  const data={sgeo_version:'4.2',exported:new Date().toISOString(),empresas:ld('empresas'),funcionarios:ld('funcionarios'),exames:ld('exames'),escritorios:ld('escritorios')};
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);const a=document.createElement('a');
   a.href=url;a.download=`SGEO_Backup_${new Date().toISOString().slice(0,10)}.json`;a.click();
@@ -823,7 +947,7 @@ initT();
   hideLoad();
   if(ok){
     R();
-    console.log('✅ SGEO Cloud 4.1 conectado!',CACHE);
+    console.log('✅ SGEO Cloud 4.2 conectado!',CACHE);
   }else{
     document.getElementById('MC').innerHTML='<div class="cd" style="border-left:4px solid var(--dg)"><div class="cd-t">❌ Erro de Conexão</div><p style="margin-top:10px;color:var(--ts)">Não foi possível conectar ao Supabase. Verifique sua internet e recarregue a página.</p><button class="bt bt-p" onclick="location.reload()" style="margin-top:14px">🔄 Recarregar</button></div>';
   }
