@@ -363,35 +363,86 @@ function aER(){ER.push({tp:'Clínico (ASO)',dt:'',vc:''});rER()}
 function aV(i){const d=document.getElementById('xD'+i).value;if(d){const dt=new Date(d);dt.setFullYear(dt.getFullYear()+1);const v=fi(dt);document.getElementById('xV'+i).value=v;ER[i].vc=v}}
 
 async function sFunc(id){
-  const nm=document.getElementById('fN').value.trim(),cpf=document.getElementById('fC').value.trim(),eId=document.getElementById('fE2').value,fn=document.getElementById('fFn').value.trim(),adm=document.getElementById('fA').value,sit=document.getElementById('fSt').value;
+  const nm=document.getElementById('fN').value.trim(),
+        cpf=document.getElementById('fC').value.trim(),
+        eId=document.getElementById('fE2').value,
+        fn=document.getElementById('fFn').value.trim(),
+        adm=document.getElementById('fA').value,
+        sit=document.getElementById('fSt').value;
+
   if(!nm||!eId||!fn){alert('Obrigatório: Nome, Empresa e Função');return}
-  for(let i=0;i<ER.length;i++){
-    if(ER[i].tp==='Outro'){alert(`Exame ${i+1}: informe qual exame é no campo "Qual exame?"`);return}
+
+  for(let i=0; i<ER.length; i++){
+    if(ER[i].tp === 'Outro'){
+      alert(`Exame ${i+1}: informe qual exame é no campo "Qual exame?"`);
+      return;
+    }
   }
+
+  showLoad('Salvando dados...');
+
   try{
-    let fId;
+    let fId = id;
+    let employeeData;
+    
+    if (id) {
+      employeeData = {nm, cpf, e_id: eId, fn, adm, sit};
+    } else {
+      fId = gid();
+      employeeData = {id: fId, nm, cpf, e_id: eId, fn, adm, sit};
+    }
+
+    const oldExams = id ? CACHE.exames.filter(x => x.fId === id) : [];
+    
+    const newExamsToInsert = ER.filter(r => r.tp).map(r => ({
+      id: gid(),
+      f_id: fId,
+      tp: r.tp,
+      dt: r.dt || null,
+      vc: r.vc || null
+    }));
+
+    // --- Execução das Operações no Banco de Dados ---
+    
     if(id){
-      await sbUpdate('funcionarios',id,{nm,cpf,e_id:eId,fn,adm,sit});
-      const i=CACHE.funcionarios.findIndex(f=>f.id===id);if(i>=0)Object.assign(CACHE.funcionarios[i],{nm,cpf,eId,fn,adm,sit});
-      fId=id;
-      const oldEx=CACHE.exames.filter(x=>x.fId===id);
-      for(const ox of oldEx) await sbDelete('exames',ox.id);
-      CACHE.exames=CACHE.exames.filter(x=>x.fId!==id);
-    }else{
-      fId=gid();
-      await sbInsert('funcionarios',{id:fId,nm,cpf,e_id:eId,fn,adm,sit});
+      await sbUpdate('funcionarios', id, employeeData);
+    } else {
+      await sbInsert('funcionarios', employeeData);
+    }
+
+    if (newExamsToInsert.length > 0) {
+      await sbInsert('exames', newExamsToInsert);
+    }
+    
+    if (oldExams.length > 0) {
+      const deletePromises = oldExams.map(ox => sbDelete('exames', ox.id));
+      await Promise.all(deletePromises);
+    }
+    
+    // --- Se tudo deu certo, atualiza o CACHE local ---
+
+    if(id){
+      const i=CACHE.funcionarios.findIndex(f=>f.id===id);
+      if(i>=0) Object.assign(CACHE.funcionarios[i], {nm,cpf,eId,fn,adm,sit});
+    } else {
       CACHE.funcionarios.push({id:fId,nm,cpf,eId,fn,adm,sit});
     }
-    for(const r of ER){
-      if(r.tp){
-        const xid=gid();
-        await sbInsert('exames',{id:xid,f_id:fId,tp:r.tp,dt:r.dt||'',vc:r.vc||''});
-        CACHE.exames.push({id:xid,fId,tp:r.tp,dt:r.dt||'',vc:r.vc||''});
-      }
-    }
-    document.getElementById('M2').remove();R();
-  }catch(err){alert('Erro: '+err.message)}
+    
+    CACHE.exames = CACHE.exames.filter(x => !oldExams.some(old => old.id === x.id));
+    const newExamsForCache = newExamsToInsert.map(x => ({id: x.id, fId: x.f_id, tp: x.tp, dt: x.dt, vc: x.vc}));
+    CACHE.exames.push(...newExamsForCache);
+    
+    hideLoad();
+    document.getElementById('M2').remove();
+    R();
+
+  } catch(err) {
+    hideLoad();
+    alert('Erro ao salvar os dados: ' + err.message + '\n\nPor segurança, a página será recarregada para garantir a consistência dos dados.');
+    location.reload(); 
+  }
 }
+
 async function dFunc(id){
   if(!confirm('Remover funcionário e exames?'))return;
   try{
